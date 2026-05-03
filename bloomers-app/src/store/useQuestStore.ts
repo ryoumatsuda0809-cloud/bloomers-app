@@ -15,7 +15,6 @@ interface QuestState {
   quests: Quest[]
   setQuests: (quests: Quest[]) => void
   completeQuest: (id: string) => void
-  getActiveQuest: () => Quest | undefined
   resetStore: () => void
 }
 
@@ -50,8 +49,6 @@ export const useQuestStore = create<QuestState>()((set, get) => ({
       return { quests: finalQuests }
     })
   },
-
-  getActiveQuest: () => get().quests.find((q) => q.status === 'active'),
 
   resetStore: () => set({ quests: [] }),
 }))

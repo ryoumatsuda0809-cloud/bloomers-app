@@ -1,4 +1,5 @@
 import type { Quest, QuestStatus } from '@/store/useQuestStore'
+import type { IdeaCard } from '@/app/actions/onboarding'
 
 export const STATIC_QUEST_DEFINITIONS = [
   { id: 'q1', title: '開発環境の構築',       description: 'Next.jsとSupabaseの接続', order: 1, dependsOn: [] },
@@ -13,19 +14,29 @@ type DbQuestStatus = 'not_started' | 'in_progress' | 'completed'
 /**
  * DBのquest_progressレコードとstatic定義を結合し、UIステータス付きのQuestを返す。
  * progressMapが空（新規ユーザー）の場合はorder最小の1件をactiveにし残りをlockedにする。
+ * selectedIdeaが渡された場合、各クエストのtitle/descriptionをアイデア固有の内容で上書きする。
  */
 export function mergeQuestsWithProgress(
-  progressMap: Record<string, DbQuestStatus>
+  progressMap: Record<string, DbQuestStatus>,
+  selectedIdea?: IdeaCard
 ): Quest[] {
+  const definitions = selectedIdea
+    ? STATIC_QUEST_DEFINITIONS.map((def, index) => ({
+        ...def,
+        title: selectedIdea?.questTitles?.[index] ?? def.title,
+        description: selectedIdea?.questDescriptions?.[index] ?? def.description,
+      }))
+    : STATIC_QUEST_DEFINITIONS
+
   const completedIds = new Set(
-    STATIC_QUEST_DEFINITIONS
+    definitions
       .filter((q) => (progressMap[q.id] ?? 'not_started') === 'completed')
       .map((q) => q.id)
   )
 
   let nextActiveAssigned = false
 
-  return [...STATIC_QUEST_DEFINITIONS]
+  return [...definitions]
     .sort((a, b) => a.order - b.order)
     .map((def) => {
       const dbStatus = progressMap[def.id] ?? 'not_started'

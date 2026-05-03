@@ -7,20 +7,15 @@ import QuestCard from '@/components/dashboard/QuestCard'
 import QuestConnector from '@/components/dashboard/QuestConnector'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Button } from '@/components/ui/button'
 import { updateQuestStatus } from '@/app/actions/quest'
 import { createRepository } from '@/app/actions/github'
 import { createClient } from '@/lib/supabase/client'
 
-const PROMPT_PREVIEWS: Record<string, string> = {
-  q1: 'npx create-next-app@latest && supabase init',
-  q2: 'npx shadcn@latest add card button badge',
-  q3: 'supabase db push && supabase gen types typescript',
-  q4: 'supabase auth providers --enable email google',
-  q5: 'vercel --prod && echo "🚀 Launched!"',
+type QuestDashboardProps = {
+  activeProjectId: string
 }
 
-export default function QuestDashboard() {
+export default function QuestDashboard({ activeProjectId }: QuestDashboardProps) {
   const router = useRouter()
   const quests = useQuestStore((state) => state.quests)
   const activeQuest = useQuestStore((state) =>
@@ -31,6 +26,7 @@ export default function QuestDashboard() {
 
   const resetStore = useQuestStore((state) => state.resetStore)
 
+  const [menuOpen, setMenuOpen] = useState(false)
   const [gitHubSaveStatus, setGitHubSaveStatus] =
     useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [gitHubRepoUrl, setGitHubRepoUrl] = useState<string>('')
@@ -62,7 +58,7 @@ export default function QuestDashboard() {
     const snapshot = useQuestStore.getState().quests
     completeQuest(id) // 楽観的更新（即時UI反映）
 
-    const { error } = await updateQuestStatus(id, 'completed')
+    const { error } = await updateQuestStatus(id, 'completed', activeProjectId)
     if (error) {
       setQuests(snapshot) // エラー時はロールバック
     }
@@ -78,19 +74,56 @@ export default function QuestDashboard() {
         <div className="mb-10">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="p-2 rounded-xl hover:bg-zinc-100 transition"
+                  aria-label="メニュー"
+                >
+                  <div className="w-5 h-0.5 bg-zinc-600 mb-1" />
+                  <div className="w-5 h-0.5 bg-zinc-600 mb-1" />
+                  <div className="w-5 h-0.5 bg-zinc-600" />
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute left-0 top-10 w-48 bg-white rounded-2xl shadow-lg border border-zinc-100 py-2 z-50">
+                    <a
+                      href="/profile"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      👤 プロフィール
+                    </a>
+                    <a
+                      href="/projects"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      📁 マイプロジェクト
+                    </a>
+                    <a
+                      href="/chat"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      💬 メンターと話す
+                    </a>
+                    <div className="border-t border-zinc-100 mt-1 pt-1">
+                      <button
+                        onClick={() => { setMenuOpen(false); handleSignOut() }}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition w-full text-left"
+                      >
+                        🚪 ログアウト
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <span className="text-3xl">🌸</span>
               <h1 className="text-3xl font-bold tracking-tight text-zinc-800">
                 Bloomers
               </h1>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="text-xs text-zinc-500 hover:text-red-500 hover:border-red-200"
-            >
-              ログアウト
-            </Button>
           </div>
           <p className="text-zinc-500 text-sm mb-6 ml-1">
             SaaS開発の全スキルをクエスト形式で習得しよう
@@ -120,7 +153,6 @@ export default function QuestDashboard() {
                 id={quest.id}
                 title={quest.title}
                 description={quest.description}
-                promptPreview={PROMPT_PREVIEWS[quest.id] ?? 'タスクを実行してください'}
                 status={quest.status}
                 onComplete={handleComplete}
                 onGitHubSave={handleGitHubSave}

@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function updateQuestStatus(
   questId: string,
-  status: 'not_started' | 'in_progress' | 'completed'
-): Promise<{ error: string | null }> {
+  status: 'in_progress' | 'completed',
+  projectId: string
+): Promise<{ error?: string }> {
   const supabase = await createClient()
 
   const {
@@ -18,20 +19,19 @@ export async function updateQuestStatus(
     return { error: '認証セッションが見つかりません。ページを再読み込みしてください。' }
   }
 
-  const now = new Date().toISOString()
-
   const { error } = await supabase.from('quest_progress').upsert(
     {
       user_id: user.id,
       quest_id: questId,
       status,
-      ...(status === 'completed' ? { completed_at: now } : {}),
+      project_id: projectId,
+      completed_at: status === 'completed' ? new Date().toISOString() : null,
     },
-    { onConflict: 'user_id,quest_id' }
+    { onConflict: 'user_id,quest_id,project_id' }
   )
 
   if (error) return { error: error.message }
 
   revalidatePath('/', 'layout')
-  return { error: null }
+  return {}
 }

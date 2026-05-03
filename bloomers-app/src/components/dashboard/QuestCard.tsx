@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Lock, Sparkles, Terminal } from "lucide-react";
+import { CheckCircle2, Circle, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,6 @@ interface QuestCardProps {
   id: string;
   title: string;
   description: string;
-  promptPreview: string;
   status: QuestStatus;
   onComplete: (id: string) => Promise<void>;
   onGitHubSave?: () => Promise<void>;
@@ -81,7 +80,6 @@ export default function QuestCard({
   id,
   title,
   description,
-  promptPreview,
   status,
   onComplete,
   onGitHubSave,
@@ -132,22 +130,49 @@ export default function QuestCard({
       </CardHeader>
 
       <CardContent className="flex-1 pt-0">
-        {/* プロンプトプレビュー */}
-        <div className="rounded-lg bg-zinc-900 p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Terminal className="size-3 text-zinc-500" />
-            <span className="text-xs text-zinc-500 font-mono">アクション</span>
-          </div>
-          <p className={`font-mono text-xs leading-relaxed break-all ${config.prompt}`}>
-            <span className="text-zinc-500">{config.promptPrefix}</span>
-            {isLocked ? "前のクエストを完了してください" : promptPreview}
-          </p>
-        </div>
       </CardContent>
 
       <CardFooter className="pt-0 flex flex-col gap-2">
+        {id === 'q1' && status === 'active' && (
+          <a
+            href="/quest1"
+            className="w-full h-10 bg-white border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition flex items-center justify-center"
+          >
+            🛠️ 環境構築を始める
+          </a>
+        )}
+        {id === 'q2' && status === 'active' && (
+          <a
+            href="/quest2"
+            className="w-full h-10 bg-white border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition flex items-center justify-center"
+          >
+            🎨 画面を作り始める
+          </a>
+        )}
+        {id === 'q3' && status === 'active' && (
+          <a
+            href="/quest3"
+            className="w-full h-10 bg-white border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition flex items-center justify-center"
+          >
+            🗄️ データ連携を始める
+          </a>
+        )}
+        {id === 'q4' && status === 'active' && (
+          <a
+            href="/quest4"
+            className="w-full h-10 bg-white border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition flex items-center justify-center"
+          >
+            🔐 ログイン機能を作る
+          </a>
+        )}
         {id === 'q5' && status === 'active' && (
           <>
+            <a
+              href="/quest5"
+              className="w-full h-10 bg-white border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition flex items-center justify-center"
+            >
+              🌍 公開手順を見る
+            </a>
             {gitHubSaveStatus === 'idle' && (
               <Button
                 variant="outline"
