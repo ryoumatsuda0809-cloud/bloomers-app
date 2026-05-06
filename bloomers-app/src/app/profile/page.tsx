@@ -182,8 +182,9 @@ export default function ProfilePage() {
             <p className="text-sm font-semibold text-zinc-700">あなたの回答</p>
 
             <div className="space-y-1">
-              <label className="text-xs text-zinc-400">一番時間を使っていること</label>
+              <label htmlFor="profile-time-usage" className="text-xs text-zinc-400">一番時間を使っていること</label>
               <input
+                id="profile-time-usage"
                 value={personality.timeUsage}
                 onChange={(e) => setPersonality({ ...personality, timeUsage: e.target.value })}
                 className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-purple-400"
@@ -196,8 +197,9 @@ export default function ProfilePage() {
                 {MBTI_TYPES.map((type) => (
                   <button
                     key={type}
+                    type="button"
                     onClick={() => setPersonality({ ...personality, mbti: type })}
-                    className={`h-9 rounded-xl text-xs font-medium transition border ${
+                    className={`h-10 rounded-xl text-xs font-medium transition border ${
                       personality.mbti === type
                         ? 'bg-indigo-600 border-indigo-500 text-white'
                         : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
@@ -215,8 +217,9 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-zinc-400">地元・日常の不便</label>
+              <label htmlFor="profile-local-pain" className="text-xs text-zinc-400">地元・日常の不便</label>
               <textarea
+                id="profile-local-pain"
                 value={personality.localPain}
                 onChange={(e) => setPersonality({ ...personality, localPain: e.target.value })}
                 className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-purple-400 resize-none h-20"
@@ -226,7 +229,11 @@ export default function ProfilePage() {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
+              className={`w-full text-white rounded-xl transition-colors ${
+                saved
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              }`}
             >
               {saved ? '✅ 保存しました' : isSaving ? '保存中...' : '変更を保存する'}
             </Button>

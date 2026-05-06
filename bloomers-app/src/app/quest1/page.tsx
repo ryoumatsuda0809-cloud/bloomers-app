@@ -13,6 +13,7 @@ export default function Quest1Page() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(0)
   const [hasError, setHasError] = useState(false)
+  const [isCompletingId, setIsCompletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -43,11 +44,13 @@ export default function Quest1Page() {
   }, [router])
 
   const handleComplete = async (stepId: string) => {
+    setIsCompletingId(stepId)
     const updated = steps.map((s) =>
       s.id === stepId ? { ...s, completed: true } : s
     )
     setSteps(updated)
     await updateStepCompletion(projectId, stepId, true)
+    setIsCompletingId(null)
 
     const nextIndex = updated.findIndex((s) => !s.completed)
     if (nextIndex === -1) {
@@ -182,9 +185,15 @@ export default function Quest1Page() {
                   )}
                   <button
                     onClick={() => handleComplete(step.id)}
-                    className="w-full h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition"
+                    disabled={isCompletingId === step.id}
+                    className="w-full h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition disabled:opacity-70"
                   >
-                    できた ✅
+                    {isCompletingId === step.id ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        確認中...
+                      </span>
+                    ) : 'できた ✅'}
                   </button>
                 </div>
               )}

@@ -87,8 +87,17 @@ export default function OnboardingPage() {
         {/* Step 1: 時間の使い方 */}
         {step === 1 && (
           <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <p className="text-purple-300 text-sm font-medium">STEP 1 / 3</p>
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2" aria-label="ステップ 1 / 3">
+                {[1, 2, 3].map((s) => (
+                  <div
+                    key={s}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      s === 1 ? 'w-6 bg-purple-400' : 'w-2 bg-white/20'
+                    }`}
+                  />
+                ))}
+              </div>
               <h1 className="text-2xl font-bold text-white leading-snug">
                 あなたが一番<br />
                 時間を使っていることは？
@@ -101,14 +110,20 @@ export default function OnboardingPage() {
               value={timeUsage}
               onChange={(e) => setTimeUsage(e.target.value)}
               placeholder="自由に書いてください..."
+              aria-label="一番時間を使っていることを入力"
               className="w-full h-28 bg-white/10 text-white placeholder-white/40 rounded-2xl p-4 resize-none border border-white/20 focus:outline-none focus:border-purple-400"
             />
             <div className="flex flex-wrap gap-2">
               {timeChips.map((chip) => (
                 <button
                   key={chip}
+                  type="button"
                   onClick={() => setTimeUsage(chip)}
-                  className="text-xs bg-white/10 text-white/70 px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/20 transition"
+                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                    timeUsage === chip
+                      ? 'bg-purple-500 border-purple-400 text-white'
+                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                  }`}
                 >
                   {chip}
                 </button>
@@ -127,8 +142,17 @@ export default function OnboardingPage() {
         {/* Step 2: MBTI */}
         {step === 2 && (
           <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <p className="text-purple-300 text-sm font-medium">STEP 2 / 3</p>
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2" aria-label="ステップ 2 / 3">
+                {[1, 2, 3].map((s) => (
+                  <div
+                    key={s}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      s === 2 ? 'w-6 bg-purple-400' : s < 2 ? 'w-2 bg-purple-600' : 'w-2 bg-white/20'
+                    }`}
+                  />
+                ))}
+              </div>
               <h1 className="text-2xl font-bold text-white leading-snug">
                 MBTIを知っていますか？
               </h1>
@@ -137,12 +161,14 @@ export default function OnboardingPage() {
             {knowsMbti === null && (
               <div className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => setKnowsMbti(true)}
                   className="h-16 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-white font-medium transition"
                 >
                   知っている
                 </button>
                 <button
+                  type="button"
                   onClick={() => setKnowsMbti(false)}
                   className="h-16 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-white font-medium transition"
                 >
@@ -157,6 +183,7 @@ export default function OnboardingPage() {
                   {MBTI_TYPES.map((type) => (
                     <button
                       key={type}
+                      type="button"
                       onClick={() => setMbti(type)}
                       className={`h-10 rounded-xl text-sm font-medium transition border ${
                         mbti === type
@@ -169,6 +196,7 @@ export default function OnboardingPage() {
                   ))}
                 </div>
                 <button
+                  type="button"
                   onClick={() => { setKnowsMbti(null); setMbti('') }}
                   className="text-white/40 text-sm hover:text-white/70 transition"
                 >
@@ -184,6 +212,7 @@ export default function OnboardingPage() {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
+                    type="button"
                     onClick={() => setPersonalityType('intuitive')}
                     className={`h-20 rounded-2xl border transition p-3 text-left ${
                       personalityType === 'intuitive'
@@ -195,6 +224,7 @@ export default function OnboardingPage() {
                     <p className="text-xs mt-1 opacity-70">やりながら考える派</p>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPersonalityType('planned')}
                     className={`h-20 rounded-2xl border transition p-3 text-left ${
                       personalityType === 'planned'
@@ -207,6 +237,7 @@ export default function OnboardingPage() {
                   </button>
                 </div>
                 <button
+                  type="button"
                   onClick={() => { setKnowsMbti(null); setPersonalityType(null) }}
                   className="text-white/40 text-sm hover:text-white/70 transition w-full text-center"
                 >
@@ -238,8 +269,17 @@ export default function OnboardingPage() {
         {/* Step 3: 地元・日常の不便 */}
         {step === 3 && (
           <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <p className="text-purple-300 text-sm font-medium">STEP 3 / 3</p>
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2" aria-label="ステップ 3 / 3">
+                {[1, 2, 3].map((s) => (
+                  <div
+                    key={s}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      s === 3 ? 'w-6 bg-purple-400' : 'w-2 bg-purple-600'
+                    }`}
+                  />
+                ))}
+              </div>
               <h1 className="text-2xl font-bold text-white leading-snug">
                 地元・学校・日常で<br />
                 「なんでこれないんだろう」<br />
@@ -250,14 +290,20 @@ export default function OnboardingPage() {
               value={localPain}
               onChange={(e) => setLocalPain(e.target.value)}
               placeholder="自由に書いてください..."
+              aria-label="地元・学校・日常で不便に思うことを入力"
               className="w-full h-28 bg-white/10 text-white placeholder-white/40 rounded-2xl p-4 resize-none border border-white/20 focus:outline-none focus:border-purple-400"
             />
             <div className="flex flex-wrap gap-2">
               {localChips.map((chip) => (
                 <button
                   key={chip}
+                  type="button"
                   onClick={() => setLocalPain(chip)}
-                  className="text-xs bg-white/10 text-white/70 px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/20 transition"
+                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                    localPain === chip
+                      ? 'bg-purple-500 border-purple-400 text-white'
+                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                  }`}
                 >
                   {chip}
                 </button>

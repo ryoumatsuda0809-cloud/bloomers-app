@@ -129,9 +129,6 @@ export default function QuestCard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex-1 pt-0">
-      </CardContent>
-
       <CardFooter className="pt-0 flex flex-col gap-2">
         {id === 'q1' && status === 'active' && (
           <a
@@ -210,7 +207,12 @@ export default function QuestCard({
           disabled={config.disabled || isSubmitting}
           onClick={handleClick}
         >
-          {isSubmitting ? "処理中..." : config.buttonLabel}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              処理中...
+            </span>
+          ) : config.buttonLabel}
         </Button>
       </CardFooter>
     </Card>

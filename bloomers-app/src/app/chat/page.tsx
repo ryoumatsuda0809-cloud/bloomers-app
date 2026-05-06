@@ -95,7 +95,8 @@ export default function ChatPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
-            className="text-zinc-400 hover:text-zinc-600 transition text-sm"
+            className="p-2 -ml-2 text-zinc-400 hover:text-zinc-600 transition"
+            aria-label="ダッシュボードに戻る"
           >
             ←
           </button>
@@ -129,7 +130,7 @@ export default function ChatPage() {
       )}
 
       {/* メッセージ一覧 */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-6 pb-4 space-y-4 max-w-2xl mx-auto w-full">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -190,6 +191,7 @@ export default function ChatPage() {
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 disabled:bg-zinc-200 text-white rounded-2xl flex items-center justify-center transition shrink-0 self-end"
+            aria-label="メッセージを送信"
           >
             ↑
           </button>

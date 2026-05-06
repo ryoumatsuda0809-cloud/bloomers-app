@@ -104,7 +104,19 @@ export default function ProjectsPage() {
                       handleSetActive(project.id)
                     }
                   }}
-                  className="p-5 space-y-2 cursor-pointer hover:bg-zinc-50 rounded-t-2xl transition"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (project.isActive) {
+                        router.push('/')
+                      } else {
+                        handleSetActive(project.id)
+                      }
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="p-5 space-y-2 cursor-pointer hover:bg-zinc-50 rounded-t-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -135,6 +147,7 @@ export default function ProjectsPage() {
                         e.stopPropagation()
                         handlePin(project.id, project.isPinned)
                       }}
+                      aria-label={project.isPinned ? 'ピンを外す' : 'ピンする'}
                       className={`text-lg shrink-0 transition ${
                         project.isPinned ? 'opacity-100' : 'opacity-30 hover:opacity-60'
                       }`}
@@ -163,7 +176,7 @@ export default function ProjectsPage() {
                   )}
                   <button
                     onClick={() => handleDelete(project.id)}
-                    className="text-xs text-red-400 hover:underline ml-auto"
+                    className="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition ml-auto"
                   >
                     削除
                   </button>

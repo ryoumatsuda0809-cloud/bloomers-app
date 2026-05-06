@@ -78,12 +78,21 @@ export default function QuestDashboard({ activeProjectId }: QuestDashboardProps)
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
                   className="p-2 rounded-xl hover:bg-zinc-100 transition"
-                  aria-label="メニュー"
+                  aria-label="メニューを開く"
+                  aria-expanded={menuOpen}
                 >
                   <div className="w-5 h-0.5 bg-zinc-600 mb-1" />
                   <div className="w-5 h-0.5 bg-zinc-600 mb-1" />
                   <div className="w-5 h-0.5 bg-zinc-600" />
                 </button>
+
+                {menuOpen && (
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setMenuOpen(false)}
+                    aria-hidden="true"
+                  />
+                )}
 
                 {menuOpen && (
                   <div className="absolute left-0 top-10 w-48 bg-white rounded-2xl shadow-lg border border-zinc-100 py-2 z-50">
