@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const MBTI_TYPES = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
@@ -93,40 +95,48 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="max-w-lg mx-auto space-y-6">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-48" />
+          <div className="space-y-3">
+            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-8">
+    <div className="min-h-screen bg-background px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
-            className="text-zinc-400 hover:text-zinc-600 transition"
+            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition"
           >
-            ← ダッシュボードに戻る
+            <ArrowLeft className="size-4" /> ダッシュボードに戻る
           </button>
         </div>
 
-        <h1 className="text-2xl font-bold text-zinc-800">プロフィール</h1>
+        <h1 className="font-heading text-2xl font-bold text-foreground">プロフィール</h1>
 
         {/* 現在のプロジェクト */}
         {selectedIdea && (
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5 space-y-2">
-            <p className="text-xs text-zinc-400 font-medium">現在のプロジェクト</p>
-            <p className="text-lg font-bold text-zinc-800">{selectedIdea.title}</p>
-            <p className="text-sm text-zinc-500">{selectedIdea.description}</p>
+          <div className="bg-card rounded-2xl border border-border p-5 space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">現在のプロジェクト</p>
+            <p className="text-lg font-bold text-foreground">{selectedIdea.title}</p>
+            <p className="text-sm text-muted-foreground">{selectedIdea.description}</p>
           </div>
         )}
 
         {/* 保存済みプロジェクト案 */}
         {projects.length > 0 && (
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5 space-y-3">
-            <p className="text-sm font-semibold text-zinc-700">
+          <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+            <p className="text-sm font-semibold text-foreground">
               保存済みのプロジェクト案
             </p>
             <div className="space-y-2">
@@ -135,21 +145,21 @@ export default function ProfilePage() {
                   key={project.id}
                   className={`rounded-xl border p-4 space-y-2 transition ${
                     project.isActive
-                      ? 'border-indigo-300 bg-indigo-50'
-                      : 'border-zinc-200 bg-zinc-50'
+                      ? 'border-primary bg-accent/40'
+                      : 'border-border bg-muted'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-semibold text-zinc-800">
+                      <p className="text-sm font-semibold text-foreground">
                         {project.title}
                       </p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {project.description}
                       </p>
                     </div>
                     {project.isActive && (
-                      <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full shrink-0">
+                      <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full shrink-0">
                         アクティブ
                       </span>
                     )}
@@ -158,14 +168,14 @@ export default function ProfilePage() {
                     {!project.isActive && (
                       <button
                         onClick={() => handleSetActive(project.id)}
-                        className="text-xs text-indigo-600 hover:underline"
+                        className="text-xs text-primary hover:underline"
                       >
                         これをアクティブにする
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(project.id)}
-                      className="text-xs text-red-400 hover:underline ml-auto"
+                      className="text-xs text-destructive hover:underline ml-auto"
                     >
                       削除
                     </button>
@@ -178,21 +188,21 @@ export default function ProfilePage() {
 
         {/* 回答の編集 */}
         {personality && (
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5 space-y-4">
-            <p className="text-sm font-semibold text-zinc-700">あなたの回答</p>
+          <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+            <p className="text-sm font-semibold text-foreground">あなたの回答</p>
 
             <div className="space-y-1">
-              <label htmlFor="profile-time-usage" className="text-xs text-zinc-400">一番時間を使っていること</label>
+              <label htmlFor="profile-time-usage" className="text-xs text-muted-foreground">一番時間を使っていること</label>
               <input
                 id="profile-time-usage"
                 value={personality.timeUsage}
                 onChange={(e) => setPersonality({ ...personality, timeUsage: e.target.value })}
-                className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-purple-400"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-zinc-400">MBTI</label>
+              <label className="text-xs text-muted-foreground">MBTI</label>
               <div className="grid grid-cols-4 gap-2">
                 {MBTI_TYPES.map((type) => (
                   <button
@@ -201,8 +211,8 @@ export default function ProfilePage() {
                     onClick={() => setPersonality({ ...personality, mbti: type })}
                     className={`h-10 rounded-xl text-xs font-medium transition border ${
                       personality.mbti === type
-                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-muted border-border text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     {type}
@@ -210,46 +220,46 @@ export default function ProfilePage() {
                 ))}
               </div>
               {personality.mbti && (
-                <p className="text-xs text-indigo-500 mt-1">
+                <p className="text-xs text-primary mt-1">
                   選択中: {personality.mbti}
                 </p>
               )}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="profile-local-pain" className="text-xs text-zinc-400">地元・日常の不便</label>
+              <label htmlFor="profile-local-pain" className="text-xs text-muted-foreground">地元・日常の不便</label>
               <textarea
                 id="profile-local-pain"
                 value={personality.localPain}
                 onChange={(e) => setPersonality({ ...personality, localPain: e.target.value })}
-                className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-purple-400 resize-none h-20"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none h-20"
               />
             </div>
 
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className={`w-full text-white rounded-xl transition-colors ${
+              className={`w-full rounded-xl transition-colors ${
                 saved
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
               }`}
             >
-              {saved ? '✅ 保存しました' : isSaving ? '保存中...' : '変更を保存する'}
+              {saved ? '保存しました' : isSaving ? '保存中...' : '変更を保存する'}
             </Button>
           </div>
         )}
 
         {/* 再質問 */}
-        <div className="bg-white rounded-2xl border border-zinc-200 p-5 space-y-3">
-          <p className="text-sm font-semibold text-zinc-700">最初からやり直す</p>
-          <p className="text-xs text-zinc-400">
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="text-sm font-semibold text-foreground">最初からやり直す</p>
+          <p className="text-xs text-muted-foreground">
             質問に答え直して、新しいプロジェクトを選択できます。
           </p>
           <Button
             onClick={handleReset}
             variant="outline"
-            className="w-full border-red-200 text-red-500 hover:bg-red-50 rounded-xl"
+            className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 rounded-xl"
           >
             もう一度最初から答える
           </Button>

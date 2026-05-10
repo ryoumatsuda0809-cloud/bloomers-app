@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ArrowLeft, ArrowRight, Sprout, Pin, PinOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea } from '@/app/actions/projects'
 import type { ProjectIdea } from '@/app/actions/projects'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -41,47 +43,55 @@ export default function ProjectsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="max-w-lg mx-auto space-y-6">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-48" />
+          <div className="space-y-3">
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-2xl" />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-8">
+    <div className="min-h-screen bg-background px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
-            className="text-zinc-400 hover:text-zinc-600 transition text-sm"
+            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition text-sm"
           >
-            ← ダッシュボードに戻る
+            <ArrowLeft className="size-4" /> ダッシュボードに戻る
           </button>
         </div>
 
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-zinc-800">マイプロジェクト</h1>
+          <h1 className="font-heading text-2xl font-bold text-foreground">マイプロジェクト</h1>
           <button
             onClick={() => router.push('/chat')}
-            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full hover:bg-indigo-700 transition"
+            className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-full hover:bg-primary/90 transition"
           >
             ＋ 新しいアイデア
           </button>
         </div>
 
         {projects.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center space-y-3">
-            <p className="text-3xl">🌱</p>
-            <p className="text-zinc-600 font-medium">まだプロジェクトがありません</p>
-            <p className="text-zinc-400 text-sm">
+          <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-3">
+            <p className="text-3xl"><Sprout className="size-10 text-muted-foreground" /></p>
+            <p className="text-foreground font-medium">まだプロジェクトがありません</p>
+            <p className="text-muted-foreground text-sm">
               メンターと話してアイデアを見つけよう
             </p>
             <button
               onClick={() => router.push('/chat')}
-              className="mt-2 text-sm text-indigo-600 hover:underline"
+              className="mt-2 text-sm text-primary hover:underline inline-flex items-center gap-1"
             >
-              メンターと話す →
+              メンターと話す <ArrowRight className="size-4" />
             </button>
           </div>
         ) : (
@@ -89,10 +99,10 @@ export default function ProjectsPage() {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className={`bg-white rounded-2xl border transition ${
+                className={`bg-card rounded-2xl border transition ${
                   project.isActive
-                    ? 'border-indigo-300 shadow-sm'
-                    : 'border-zinc-200'
+                    ? 'border-primary shadow-sm'
+                    : 'border-border'
                 }`}
               >
                 {/* タップ可能なメインエリア */}
@@ -116,16 +126,16 @@ export default function ProjectsPage() {
                   }}
                   role="button"
                   tabIndex={0}
-                  className="p-5 space-y-2 cursor-pointer hover:bg-zinc-50 rounded-t-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="p-5 space-y-2 cursor-pointer hover:bg-muted rounded-t-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-base font-bold text-zinc-800">
+                        <p className="text-base font-bold text-foreground">
                           {project.title}
                         </p>
                         {project.isActive && (
-                          <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
                             アクティブ
                           </span>
                         )}
@@ -135,10 +145,10 @@ export default function ProjectsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-zinc-500 mt-0.5">
+                      <p className="text-sm text-muted-foreground mt-0.5">
                         {project.description}
                       </p>
-                      <p className="text-xs text-zinc-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {new Date(project.createdAt).toLocaleDateString('ja-JP')}
                       </p>
                     </div>
@@ -148,35 +158,38 @@ export default function ProjectsPage() {
                         handlePin(project.id, project.isPinned)
                       }}
                       aria-label={project.isPinned ? 'ピンを外す' : 'ピンする'}
-                      className={`text-lg shrink-0 transition ${
+                      className={`text-lg shrink-0 transition p-2 -mr-2 ${
                         project.isPinned ? 'opacity-100' : 'opacity-30 hover:opacity-60'
                       }`}
                     >
-                      📌
+                      {project.isPinned
+                        ? <Pin className="size-4 text-primary" />
+                        : <PinOff className="size-4 text-muted-foreground" />
+                      }
                     </button>
                   </div>
-                  <p className={`text-xs font-medium mt-1 ${
-                    project.isActive ? 'text-indigo-500' : 'text-zinc-400'
+                  <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${
+                    project.isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}>
                     {project.isActive
-                      ? 'タップしてダッシュボードへ →'
+                      ? <>タップしてダッシュボードへ <ArrowRight className="size-3" /></>
                       : 'タップしてアクティブにする'}
                   </p>
                 </div>
 
                 {/* アクションエリア */}
-                <div className="px-5 pb-4 flex gap-3 border-t border-zinc-100 pt-3">
+                <div className="px-5 pb-4 flex gap-3 border-t border-border pt-3">
                   {!project.isActive && (
                     <button
                       onClick={() => handleSetActive(project.id)}
-                      className="text-xs text-indigo-600 font-medium hover:underline"
+                      className="text-xs text-primary font-medium hover:underline"
                     >
                       これをアクティブにする
                     </button>
                   )}
                   <button
                     onClick={() => handleDelete(project.id)}
-                    className="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 transition ml-auto"
+                    className="text-xs text-destructive border border-destructive/30 px-2.5 py-1 rounded-lg hover:bg-destructive/10 transition ml-auto"
                   >
                     削除
                   </button>

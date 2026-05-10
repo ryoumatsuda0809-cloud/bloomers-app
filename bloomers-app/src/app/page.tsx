@@ -40,7 +40,7 @@ export default async function Home() {
   const initialQuests = mergeQuestsWithProgress(progressMap, selectedIdea ?? undefined)
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <QuestStoreInitializer quests={initialQuests} />
       <QuestDashboard activeProjectId={activeProjectId} />
     </main>

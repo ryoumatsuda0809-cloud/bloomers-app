@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateQuestStepCompletion } from '@/app/actions/setup'
 import type { SetupStep } from '@/app/actions/setup'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ArrowLeft, ArrowRight, ExternalLink, PartyPopper, AlertTriangle } from 'lucide-react'
 
 export default function Quest3Page() {
   const router = useRouter()
@@ -57,20 +59,20 @@ export default function Quest3Page() {
     }
   }
 
-  const allCompleted = steps.every((s) => s.completed)
+  const allCompleted = steps.length > 0 && steps.every((s) => s.completed)
   const completedCount = steps.filter((s) => s.completed).length
 
   if (hasError) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-3">
-          <p className="text-2xl">⚠️</p>
-          <p className="text-zinc-700 font-medium">
+          <p className="text-2xl"><AlertTriangle className="size-10 text-destructive" /></p>
+          <p className="text-foreground font-medium">
             アクティブなプロジェクトが見つかりません
           </p>
           <button
             onClick={() => router.push('/projects')}
-            className="text-sm text-indigo-600 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             マイプロジェクトに戻る
           </button>
@@ -81,50 +83,59 @@ export default function Quest3Page() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="max-w-lg mx-auto space-y-6">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-2 w-full rounded-full" />
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-8">
+    <div className="min-h-screen bg-background px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
-            className="text-zinc-400 hover:text-zinc-600 transition text-sm"
+            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition text-sm py-2"
           >
-            ← ダッシュボードに戻る
+            <ArrowLeft className="size-4" /> ダッシュボードに戻る
           </button>
         </div>
 
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-zinc-800">
+          <h1 className="font-heading text-2xl font-bold text-foreground">
             データを保存できるようにしよう
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             {completedCount} / {steps.length} ステップ完了
           </p>
         </div>
 
-        <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+            className="h-full bg-primary transition-all duration-500"
             style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
           />
         </div>
 
         {allCompleted && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center space-y-2">
-            <p className="text-2xl">🎉</p>
-            <p className="text-green-700 font-bold">クエスト3完了！</p>
+          <div className="bg-accent/30 border border-accent rounded-2xl p-5 text-center space-y-2">
+            <p className="text-2xl"><PartyPopper className="size-10 text-primary" /></p>
+            <p className="text-accent-foreground font-bold">クエスト3完了！</p>
             <button
               onClick={() => router.push('/')}
-              className="text-green-600 text-sm underline hover:text-green-700 transition"
+              className="inline-flex items-center gap-1 text-accent-foreground text-sm underline hover:opacity-80 transition"
             >
-              ダッシュボードに戻る →
+              ダッシュボードに戻る <ArrowRight className="size-4" />
             </button>
           </div>
         )}
@@ -133,32 +144,32 @@ export default function Quest3Page() {
           {steps.map((step, index) => (
             <div
               key={step.id}
-              className={`bg-white rounded-2xl border p-5 space-y-3 transition ${
+              className={`bg-card rounded-2xl border p-5 space-y-3 transition ${
                 step.completed
-                  ? 'border-green-200 bg-green-50'
+                  ? 'border-accent bg-accent/30'
                   : index === currentStep
-                  ? 'border-indigo-300 shadow-sm'
-                  : 'border-zinc-200 opacity-50'
+                  ? 'border-primary shadow-sm'
+                  : 'border-border opacity-50'
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
                   step.completed
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-accent text-accent-foreground'
                     : index === currentStep
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-zinc-200 text-zinc-500'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
                 }`}>
                   {step.completed ? '✓' : index + 1}
                 </div>
                 <div className="flex-1">
                   <p className={`font-semibold text-sm ${
-                    step.completed ? 'text-green-700' : 'text-zinc-800'
+                    step.completed ? 'text-accent-foreground' : 'text-foreground'
                   }`}>
                     {step.title}
                   </p>
                   {index === currentStep && !step.completed && (
-                    <p className="text-zinc-500 text-xs mt-1">
+                    <p className="text-muted-foreground text-xs mt-1">
                       {step.description}
                     </p>
                   )}
@@ -172,21 +183,37 @@ export default function Quest3Page() {
                       href={step.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
-                      🔗 {step.linkLabel ?? 'リンクを開く'}
+                      <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
                     </a>
                   )}
                   <button
                     onClick={() => handleComplete(step.id)}
-                    className="w-full h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition"
+                    className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition"
                   >
-                    できた ✅
+                    できた
                   </button>
                 </div>
               )}
             </div>
           ))}
+        </div>
+
+        <div className="pt-4 border-t border-border">
+          <button
+            onClick={() => {
+              const questTitle = steps[currentStep]?.title ?? 'このステップ'
+              const message = encodeURIComponent(
+                `「${questTitle}」で詰まっています。助けてください。`
+              )
+              router.push(`/chat?help=${message}`)
+            }}
+            className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
+          >
+            <span>🆘</span>
+            <span>詰まったら相談する</span>
+          </button>
         </div>
 
       </div>

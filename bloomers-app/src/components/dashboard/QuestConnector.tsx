@@ -12,23 +12,23 @@ const CONNECTOR_CONFIG: Record<
   { line: string; arrow: string; dashed: boolean }
 > = {
   completed: {
-    line: 'border-emerald-400',
-    arrow: 'text-emerald-400',
+    line: 'border-primary',
+    arrow: 'text-primary',
     dashed: false,
   },
   active: {
-    line: 'border-indigo-400',
-    arrow: 'text-indigo-400',
+    line: 'border-primary',
+    arrow: 'text-primary',
     dashed: true,
   },
   unlocked: {
-    line: 'border-violet-300',
-    arrow: 'text-violet-300',
+    line: 'border-accent',
+    arrow: 'text-accent-foreground',
     dashed: true,
   },
   locked: {
-    line: 'border-zinc-200',
-    arrow: 'text-zinc-200',
+    line: 'border-border',
+    arrow: 'text-muted-foreground',
     dashed: true,
   },
 }

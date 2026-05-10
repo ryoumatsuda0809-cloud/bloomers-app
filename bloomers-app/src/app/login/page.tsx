@@ -46,21 +46,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
         {/* ロゴ */}
         <div className="flex items-center justify-center gap-2 mb-8">
           <span className="text-3xl">🌸</span>
-          <span className="text-2xl font-bold tracking-tight text-zinc-800">Bloomers</span>
+          <span className="text-2xl font-bold tracking-tight text-foreground">Bloomers</span>
         </div>
 
-        <Card className="rounded-2xl shadow-md ring-1 ring-zinc-100">
+        <Card className="rounded-2xl shadow-md ring-1 ring-border">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-zinc-800">
+            <CardTitle className="text-lg font-bold text-foreground">
               {mode === 'login' ? 'ログイン' : 'アカウント登録'}
             </CardTitle>
-            <CardDescription className="text-xs text-zinc-500">
+            <CardDescription className="text-xs text-muted-foreground">
               {mode === 'login'
                 ? 'メールアドレスとパスワードでログイン'
                 : 'メールアドレスとパスワードで新規登録'}
@@ -100,10 +100,10 @@ export default function LoginPage() {
             {/* 区切り線 */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-200" />
+                <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs text-zinc-400">または</span>
+                <span className="bg-card px-3 text-xs text-muted-foreground">または</span>
               </div>
             </div>
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-medium text-zinc-700">
+                <Label htmlFor="email" className="text-xs font-medium text-foreground">
                   メールアドレス
                 </Label>
                 <Input
@@ -124,12 +124,12 @@ export default function LoginPage() {
                   {...register('email')}
                 />
                 {errors.email && (
-                  <p className="text-xs text-red-500">{errors.email.message}</p>
+                  <p className="text-xs text-destructive">{errors.email.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-medium text-zinc-700">
+                <Label htmlFor="password" className="text-xs font-medium text-foreground">
                   パスワード
                 </Label>
                 <Input
@@ -142,12 +142,12 @@ export default function LoginPage() {
                   {...register('password')}
                 />
                 {errors.password && (
-                  <p className="text-xs text-red-500">{errors.password.message}</p>
+                  <p className="text-xs text-destructive">{errors.password.message}</p>
                 )}
               </div>
 
               {serverError && (
-                <p className="text-xs text-red-500 bg-red-50 rounded-md px-3 py-2">
+                <p className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-2">
                   {serverError}
                 </p>
               )}
@@ -155,7 +155,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-9 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold"
+                className="w-full h-9 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold"
               >
                 {isSubmitting
                   ? '処理中...'
@@ -166,7 +166,7 @@ export default function LoginPage() {
             </form>
 
             {/* モード切り替え */}
-            <p className="text-center text-xs text-zinc-500">
+            <p className="text-center text-xs text-muted-foreground">
               {mode === 'login' ? 'アカウントをお持ちでない方は' : 'すでにアカウントをお持ちの方は'}
               <button
                 type="button"
@@ -174,7 +174,7 @@ export default function LoginPage() {
                   setMode(mode === 'login' ? 'signup' : 'login')
                   setServerError(null)
                 }}
-                className="ml-1 text-indigo-600 hover:underline font-medium"
+                className="ml-1 text-primary hover:underline font-medium"
               >
                 {mode === 'login' ? '新規登録' : 'ログイン'}
               </button>

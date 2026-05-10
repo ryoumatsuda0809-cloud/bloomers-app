@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { generateIdeasWithAI, saveOnboardingData } from '@/app/actions/onboarding'
@@ -76,12 +77,12 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-lg">
 
         <div className="flex items-center justify-center gap-2 mb-10">
           <span className="text-3xl">🌸</span>
-          <span className="text-2xl font-bold text-white tracking-tight">Bloomers</span>
+          <span className="text-2xl font-bold text-foreground tracking-tight">Bloomers</span>
         </div>
 
         {/* Step 1: 時間の使い方 */}
@@ -93,16 +94,16 @@ export default function OnboardingPage() {
                   <div
                     key={s}
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      s === 1 ? 'w-6 bg-purple-400' : 'w-2 bg-white/20'
+                      s === 1 ? 'w-6 bg-primary' : 'w-2 bg-muted'
                     }`}
                   />
                 ))}
               </div>
-              <h1 className="text-2xl font-bold text-white leading-snug">
+              <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
                 あなたが一番<br />
                 時間を使っていることは？
               </h1>
-              <p className="text-white/50 text-sm">
+              <p className="text-muted-foreground text-sm">
                 趣味でも、バイトでも、なんでも
               </p>
             </div>
@@ -111,7 +112,7 @@ export default function OnboardingPage() {
               onChange={(e) => setTimeUsage(e.target.value)}
               placeholder="自由に書いてください..."
               aria-label="一番時間を使っていることを入力"
-              className="w-full h-28 bg-white/10 text-white placeholder-white/40 rounded-2xl p-4 resize-none border border-white/20 focus:outline-none focus:border-purple-400"
+              className="w-full h-28 bg-card text-foreground placeholder:text-muted-foreground rounded-2xl p-4 resize-none border border-border focus:outline-none focus:border-primary"
             />
             <div className="flex flex-wrap gap-2">
               {timeChips.map((chip) => (
@@ -119,10 +120,10 @@ export default function OnboardingPage() {
                   key={chip}
                   type="button"
                   onClick={() => setTimeUsage(chip)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                  className={`text-xs px-3 py-2.5 rounded-full border transition ${
                     timeUsage === chip
-                      ? 'bg-purple-500 border-purple-400 text-white'
-                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground border-border hover:bg-muted'
                   }`}
                 >
                   {chip}
@@ -132,9 +133,9 @@ export default function OnboardingPage() {
             <Button
               onClick={() => setStep(2)}
               disabled={!timeUsage.trim()}
-              className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-2xl"
+              className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-2xl"
             >
-              次へ →
+              次へ <ArrowRight className="size-4" />
             </Button>
           </div>
         )}
@@ -148,12 +149,12 @@ export default function OnboardingPage() {
                   <div
                     key={s}
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      s === 2 ? 'w-6 bg-purple-400' : s < 2 ? 'w-2 bg-purple-600' : 'w-2 bg-white/20'
+                      s === 2 ? 'w-6 bg-primary' : s < 2 ? 'w-2 bg-primary/70' : 'w-2 bg-muted'
                     }`}
                   />
                 ))}
               </div>
-              <h1 className="text-2xl font-bold text-white leading-snug">
+              <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
                 MBTIを知っていますか？
               </h1>
             </div>
@@ -163,14 +164,14 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setKnowsMbti(true)}
-                  className="h-16 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-white font-medium transition"
+                  className="h-16 bg-card hover:bg-muted border border-border rounded-2xl text-foreground font-medium transition"
                 >
                   知っている
                 </button>
                 <button
                   type="button"
                   onClick={() => setKnowsMbti(false)}
-                  className="h-16 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-white font-medium transition"
+                  className="h-16 bg-card hover:bg-muted border border-border rounded-2xl text-foreground font-medium transition"
                 >
                   知らない / わからない
                 </button>
@@ -187,8 +188,8 @@ export default function OnboardingPage() {
                       onClick={() => setMbti(type)}
                       className={`h-10 rounded-xl text-sm font-medium transition border ${
                         mbti === type
-                          ? 'bg-purple-500 border-purple-400 text-white'
-                          : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20'
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'bg-card border-border text-muted-foreground hover:bg-muted'
                       }`}
                     >
                       {type}
@@ -198,16 +199,16 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => { setKnowsMbti(null); setMbti('') }}
-                  className="text-white/40 text-sm hover:text-white/70 transition"
+                  className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground transition"
                 >
-                  ← 戻る
+                  <ArrowLeft className="size-4" /> 戻る
                 </button>
               </div>
             )}
 
             {knowsMbti === false && (
               <div className="space-y-4">
-                <p className="text-white/70 text-center text-sm">
+                <p className="text-muted-foreground text-center text-sm">
                   直感で選んでください
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -216,8 +217,8 @@ export default function OnboardingPage() {
                     onClick={() => setPersonalityType('intuitive')}
                     className={`h-20 rounded-2xl border transition p-3 text-left ${
                       personalityType === 'intuitive'
-                        ? 'bg-purple-500 border-purple-400 text-white'
-                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20'
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-card border-border text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     <p className="font-semibold">直感型</p>
@@ -228,8 +229,8 @@ export default function OnboardingPage() {
                     onClick={() => setPersonalityType('planned')}
                     className={`h-20 rounded-2xl border transition p-3 text-left ${
                       personalityType === 'planned'
-                        ? 'bg-purple-500 border-purple-400 text-white'
-                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20'
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-card border-border text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     <p className="font-semibold">計画型</p>
@@ -239,9 +240,9 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => { setKnowsMbti(null); setPersonalityType(null) }}
-                  className="text-white/40 text-sm hover:text-white/70 transition w-full text-center"
+                  className="inline-flex items-center justify-center gap-1 text-muted-foreground text-sm hover:text-foreground transition w-full"
                 >
-                  ← 戻る
+                  <ArrowLeft className="size-4" /> 戻る
                 </button>
               </div>
             )}
@@ -251,15 +252,15 @@ export default function OnboardingPage() {
                 <Button
                   onClick={() => setStep(1)}
                   variant="outline"
-                  className="h-12 px-6 border-white/30 text-white hover:bg-white/10 rounded-2xl"
+                  className="h-12 px-6 border-border text-foreground hover:bg-muted rounded-2xl"
                 >
-                  ← 戻る
+                  <ArrowLeft className="size-4" /> 戻る
                 </Button>
                 <Button
                   onClick={() => setStep(3)}
-                  className="flex-1 h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-2xl"
+                  className="flex-1 h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-2xl"
                 >
-                  次へ →
+                  次へ <ArrowRight className="size-4" />
                 </Button>
               </div>
             )}
@@ -275,12 +276,12 @@ export default function OnboardingPage() {
                   <div
                     key={s}
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      s === 3 ? 'w-6 bg-purple-400' : 'w-2 bg-purple-600'
+                      s === 3 ? 'w-6 bg-primary' : 'w-2 bg-primary/70'
                     }`}
                   />
                 ))}
               </div>
-              <h1 className="text-2xl font-bold text-white leading-snug">
+              <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
                 地元・学校・日常で<br />
                 「なんでこれないんだろう」<br />
                 と思うことは？
@@ -291,7 +292,7 @@ export default function OnboardingPage() {
               onChange={(e) => setLocalPain(e.target.value)}
               placeholder="自由に書いてください..."
               aria-label="地元・学校・日常で不便に思うことを入力"
-              className="w-full h-28 bg-white/10 text-white placeholder-white/40 rounded-2xl p-4 resize-none border border-white/20 focus:outline-none focus:border-purple-400"
+              className="w-full h-28 bg-card text-foreground placeholder:text-muted-foreground rounded-2xl p-4 resize-none border border-border focus:outline-none focus:border-primary"
             />
             <div className="flex flex-wrap gap-2">
               {localChips.map((chip) => (
@@ -299,10 +300,10 @@ export default function OnboardingPage() {
                   key={chip}
                   type="button"
                   onClick={() => setLocalPain(chip)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                  className={`text-xs px-3 py-2.5 rounded-full border transition ${
                     localPain === chip
-                      ? 'bg-purple-500 border-purple-400 text-white'
-                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground border-border hover:bg-muted'
                   }`}
                 >
                   {chip}
@@ -313,16 +314,16 @@ export default function OnboardingPage() {
               <Button
                 onClick={() => setStep(2)}
                 variant="outline"
-                className="h-12 px-6 border-white/30 text-white hover:bg-white/10 rounded-2xl"
+                className="h-12 px-6 border-border text-foreground hover:bg-muted rounded-2xl"
               >
-                ← 戻る
+                <ArrowLeft className="size-4" /> 戻る
               </Button>
               <Button
                 onClick={handleStep3Next}
                 disabled={!localPain.trim()}
-                className="flex-1 h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-2xl"
+                className="flex-1 h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-2xl"
               >
-                アイデアを見る ✨
+                アイデアを見る
               </Button>
             </div>
           </div>
@@ -332,12 +333,12 @@ export default function OnboardingPage() {
         {step === 4 && (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <p className="text-purple-300 text-sm font-medium">あなただけの提案</p>
-              <h1 className="text-2xl font-bold text-white">
+              <p className="text-primary text-sm font-medium">あなただけの提案</p>
+              <h1 className="font-heading text-2xl font-bold text-foreground">
                 {isLoading ? 'あなたを分析中...' : '作るものを選んでください'}
               </h1>
               {isLoading && (
-                <p className="text-white/50 text-sm">
+                <p className="text-muted-foreground text-sm">
                   あなたの答えを元にアイデアを考えています
                 </p>
               )}
@@ -345,7 +346,7 @@ export default function OnboardingPage() {
 
             {isLoading ? (
               <div className="flex justify-center py-12">
-                <div className="w-12 h-12 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+                <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
               </div>
             ) : (
               <div className="space-y-3">
@@ -354,24 +355,24 @@ export default function OnboardingPage() {
                     key={idea.title}
                     onClick={() => handleSelectIdea(idea)}
                     disabled={isLoading}
-                    className="w-full text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-purple-400 rounded-2xl p-5 transition group"
+                    className="w-full text-left bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl p-5 transition group"
                   >
-                    <p className="text-white font-semibold text-lg group-hover:text-purple-300 transition">
+                    <p className="text-foreground font-semibold text-lg group-hover:text-primary transition">
                       {idea.title}
                     </p>
-                    <p className="text-white/60 text-sm mt-1">
+                    <p className="text-muted-foreground text-sm mt-1">
                       {idea.description}
                     </p>
                   </button>
                 ))}
                 <button
                   onClick={() => setStep(1)}
-                  className="w-full text-white/40 text-sm hover:text-white/70 transition pt-2"
+                  className="w-full text-muted-foreground text-sm hover:text-foreground transition pt-2"
                 >
                   最初からやり直す
                 </button>
                 {selectError && (
-                  <p className="text-red-400 text-sm text-center">
+                  <p className="text-destructive text-sm text-center">
                     {selectError}
                   </p>
                 )}
