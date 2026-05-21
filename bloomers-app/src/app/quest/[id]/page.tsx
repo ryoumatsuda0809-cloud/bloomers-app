@@ -1,13 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateStepCompletion, updateQuestStepCompletion } from '@/app/actions/setup'
 import type { SetupStep } from '@/app/actions/setup'
+import { updateQuestStatus } from '@/app/actions/quest'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, ArrowRight, ExternalLink, PartyPopper, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, ExternalLink, AlertTriangle } from 'lucide-react'
 import { QUEST_CONFIG } from '@/lib/quest-utils'
+import QuestHeader from '@/components/quest/QuestHeader'
+import MentorWindow from '@/components/quest/MentorWindow'
+import QuestCompleteOverlay from '@/components/quest/QuestCompleteOverlay'
+import DecisionDialog from '@/components/quest/DecisionDialog'
+import NextQuestPreview from '@/components/quest/NextQuestPreview'
 
 export default function QuestPage() {
   const router = useRouter()
@@ -20,6 +26,13 @@ export default function QuestPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [hasError, setHasError] = useState(false)
   const [isCompletingId, setIsCompletingId] = useState<string | null>(null)
+
+  const [showCompleteOverlay, setShowCompleteOverlay] = useState(false)
+  const [showDecisionDialog, setShowDecisionDialog] = useState(false)
+  const [showNextQuestPreview, setShowNextQuestPreview] = useState(false)
+
+  const wasCompleteOnLoad = useRef(false)
+  const completionTriggered = useRef(false)
 
   useEffect(() => {
     const config = QUEST_CONFIG[id as keyof typeof QUEST_CONFIG]
@@ -55,6 +68,29 @@ export default function QuestPage() {
   const config = QUEST_CONFIG[id as keyof typeof QUEST_CONFIG]
   if (!config) notFound()
 
+  const allCompleted = steps.length > 0 && steps.every((s) => s.completed)
+
+  // 初回ロード時の完了状態を記録 — ロード後に初めて完了した場合のみオーバーレイを表示
+  useEffect(() => {
+    if (!isLoading) {
+      wasCompleteOnLoad.current = allCompleted
+    }
+  }, [isLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      allCompleted &&
+      !wasCompleteOnLoad.current &&
+      !completionTriggered.current &&
+      projectId
+    ) {
+      completionTriggered.current = true
+      void updateQuestStatus(id, 'completed', projectId)
+      setShowCompleteOverlay(true)
+    }
+  }, [allCompleted, isLoading, projectId, id])
+
   const handleStepToggle = async (stepId: string) => {
     setIsCompletingId(stepId)
     const updated = steps.map((s) =>
@@ -75,17 +111,32 @@ export default function QuestPage() {
     }
   }
 
-  const allCompleted = steps.length > 0 && steps.every((s) => s.completed)
+  const questKeys = Object.keys(QUEST_CONFIG) as (keyof typeof QUEST_CONFIG)[]
+  const currentIndex = questKeys.indexOf(id as keyof typeof QUEST_CONFIG)
+  const nextQuestKey = currentIndex < questKeys.length - 1 ? questKeys[currentIndex + 1] : null
+  const nextQuestConfig = nextQuestKey ? QUEST_CONFIG[nextQuestKey] : null
+
+  const handleQuestCompleteNext = () => {
+    setShowCompleteOverlay(false)
+    if (config.decisionQuestion) {
+      setShowDecisionDialog(true)
+    } else {
+      setShowNextQuestPreview(true)
+    }
+  }
+
+  const handleDecisionComplete = () => {
+    setShowDecisionDialog(false)
+    setShowNextQuestPreview(true)
+  }
+
   const completedCount = steps.filter((s) => s.completed).length
-  const completionMessage = config.questNumber === null
-    ? '環境構築完了！'
-    : `クエスト${config.questNumber}完了！`
 
   if (hasError) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-3">
-          <p className="text-2xl"><AlertTriangle className="size-10 text-destructive" /></p>
+          <AlertTriangle className="size-10 text-destructive mx-auto" />
           <p className="text-foreground font-medium">
             アクティブなプロジェクトが見つかりません
           </p>
@@ -118,130 +169,145 @@ export default function QuestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="max-w-lg mx-auto space-y-6">
+    <>
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="max-w-lg mx-auto space-y-6">
 
-        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition text-sm py-2"
           >
             <ArrowLeft className="size-4" /> ダッシュボードに戻る
           </button>
-        </div>
 
-        <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-bold text-foreground">
-            {config.title}
-          </h1>
+          <QuestHeader
+            title={config.title}
+            estimatedMinutes={config.estimatedMinutes}
+            difficulty={config.difficulty}
+            hiddenPrompt={config.hiddenPrompt}
+          />
+
           <p className="text-sm text-muted-foreground">
             {completedCount} / {steps.length} ステップ完了
           </p>
-        </div>
 
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
-          />
-        </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-500"
+              style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
+            />
+          </div>
 
-        {allCompleted && (
-          <div className="bg-accent/30 border border-accent rounded-2xl p-5 text-center space-y-2">
-            <p className="text-2xl"><PartyPopper className="size-10 text-primary" /></p>
-            <p className="text-accent-foreground font-bold">{completionMessage}</p>
+          <MentorWindow message={config.mentorMessage} />
+
+          <div className="space-y-3">
+            {steps.map((step, index) => (
+              <div
+                key={step.id}
+                className={`bg-card rounded-2xl border p-5 space-y-3 transition ${
+                  step.completed
+                    ? 'border-accent bg-accent/30'
+                    : index === currentStep
+                    ? 'border-primary shadow-sm'
+                    : 'border-border opacity-50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                    step.completed
+                      ? 'bg-accent text-accent-foreground'
+                      : index === currentStep
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {step.completed ? '✓' : index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-semibold text-sm ${
+                      step.completed ? 'text-accent-foreground' : 'text-foreground'
+                    }`}>
+                      {step.title}
+                    </p>
+                    {index === currentStep && !step.completed && (
+                      <p className="text-muted-foreground text-xs mt-1">
+                        {step.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {index === currentStep && !step.completed && (
+                  <div className="space-y-2 pl-10">
+                    {step.link && (
+                      <a
+                        href={step.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleStepToggle(step.id)}
+                      disabled={isCompletingId === step.id}
+                      className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
+                    >
+                      {isCompletingId === step.id ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          確認中...
+                        </span>
+                      ) : 'できた'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-border">
             <button
-              onClick={() => router.push('/')}
-              className="inline-flex items-center gap-1 text-accent-foreground text-sm underline hover:opacity-80 transition"
+              onClick={() => {
+                const questTitle = steps[currentStep]?.title ?? 'このステップ'
+                const message = encodeURIComponent(
+                  `「${questTitle}」で詰まっています。助けてください。`
+                )
+                router.push(`/chat?help=${message}`)
+              }}
+              className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
             >
-              ダッシュボードに戻る <ArrowRight className="size-4" />
+              <span>🆘</span>
+              <span>詰まったら相談する</span>
             </button>
           </div>
-        )}
 
-        <div className="space-y-3">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={`bg-card rounded-2xl border p-5 space-y-3 transition ${
-                step.completed
-                  ? 'border-accent bg-accent/30'
-                  : index === currentStep
-                  ? 'border-primary shadow-sm'
-                  : 'border-border opacity-50'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
-                  step.completed
-                    ? 'bg-accent text-accent-foreground'
-                    : index === currentStep
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {step.completed ? '✓' : index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className={`font-semibold text-sm ${
-                    step.completed ? 'text-accent-foreground' : 'text-foreground'
-                  }`}>
-                    {step.title}
-                  </p>
-                  {index === currentStep && !step.completed && (
-                    <p className="text-muted-foreground text-xs mt-1">
-                      {step.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {index === currentStep && !step.completed && (
-                <div className="space-y-2 pl-10">
-                  {step.link && (
-                    <a
-                      href={step.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                      <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleStepToggle(step.id)}
-                    disabled={isCompletingId === step.id}
-                    className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
-                  >
-                    {isCompletingId === step.id ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        確認中...
-                      </span>
-                    ) : 'できた'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
         </div>
-
-        <div className="pt-4 border-t border-border">
-          <button
-            onClick={() => {
-              const questTitle = steps[currentStep]?.title ?? 'このステップ'
-              const message = encodeURIComponent(
-                `「${questTitle}」で詰まっています。助けてください。`
-              )
-              router.push(`/chat?help=${message}`)
-            }}
-            className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
-          >
-            <span>🆘</span>
-            <span>詰まったら相談する</span>
-          </button>
-        </div>
-
       </div>
-    </div>
+
+      {showCompleteOverlay && (
+        <QuestCompleteOverlay
+          questTitle={config.title}
+          onNext={handleQuestCompleteNext}
+        />
+      )}
+
+      {showDecisionDialog && config.decisionQuestion && (
+        <DecisionDialog
+          questId={id}
+          question={config.decisionQuestion}
+          isOpen={showDecisionDialog}
+          onComplete={handleDecisionComplete}
+        />
+      )}
+
+      {showNextQuestPreview && (
+        <NextQuestPreview
+          nextQuestId={nextQuestKey ?? null}
+          nextQuestTitle={nextQuestConfig?.title ?? null}
+          nextEstimatedMinutes={nextQuestConfig?.estimatedMinutes ?? null}
+        />
+      )}
+    </>
   )
 }
