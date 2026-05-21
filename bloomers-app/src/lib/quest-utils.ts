@@ -1,6 +1,14 @@
 import type { Quest, QuestStatus } from '@/store/useQuestStore'
 import type { IdeaCard } from '@/app/actions/onboarding'
 
+export const QUEST_CONFIG = {
+  q1: { columnName: 'setup_steps',  questNumber: null, title: '開発環境を整えよう' },
+  q2: { columnName: 'quest2_steps', questNumber: 2,    title: '最初の画面を作ろう' },
+  q3: { columnName: 'quest3_steps', questNumber: 3,    title: 'データを保存できるようにしよう' },
+  q4: { columnName: 'quest4_steps', questNumber: 4,    title: 'ログインできるようにしよう' },
+  q5: { columnName: 'quest5_steps', questNumber: 5,    title: '世界に公開しよう' },
+} as const
+
 export const STATIC_QUEST_DEFINITIONS = [
   { id: 'q1', title: '開発環境の構築',       description: 'Next.jsとSupabaseの接続', order: 1, dependsOn: [] },
   { id: 'q2', title: 'UIコンポーネント作成', description: '最初のボタンを作る',       order: 2, dependsOn: ['q1'] },

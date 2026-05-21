@@ -143,14 +143,9 @@
     overscroll-behavior-y: none;
   }
 
-  body {
+  /* ボタン・ナビ等のUIパーツのみ選択不可 */
+  button, a, nav, header {
     user-select: none;
     -webkit-user-select: none;
-  }
-
-  /* テキスト入力欄だけはuser-selectを戻す */
-  input, textarea, [contenteditable] {
-    user-select: text;
-    -webkit-user-select: text;
   }
 }

@@ -1,22 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { updateQuestStepCompletion } from '@/app/actions/setup'
+import { updateStepCompletion, updateQuestStepCompletion } from '@/app/actions/setup'
 import type { SetupStep } from '@/app/actions/setup'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ExternalLink, PartyPopper, AlertTriangle } from 'lucide-react'
+import { QUEST_CONFIG } from '@/lib/quest-utils'
 
-export default function Quest5Page() {
+export default function QuestPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = typeof params.id === 'string' ? params.id : ''
+
   const [steps, setSteps] = useState<SetupStep[]>([])
   const [projectId, setProjectId] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(0)
   const [hasError, setHasError] = useState(false)
+  const [isCompletingId, setIsCompletingId] = useState<string | null>(null)
 
   useEffect(() => {
+    const config = QUEST_CONFIG[id as keyof typeof QUEST_CONFIG]
+    if (!config) return
+
     const load = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -24,43 +32,54 @@ export default function Quest5Page() {
 
       const { data } = await supabase
         .from('project_ideas')
-        .select('id, quest5_steps')
+        .select(`id, ${config.columnName}`)
         .eq('user_id', user.id)
         .eq('is_active', true)
         .single()
 
       if (data) {
         setProjectId(data.id)
-        setSteps(data.quest5_steps ?? [])
-        const firstIncomplete = (data.quest5_steps ?? [])
-          .findIndex((s: SetupStep) => !s.completed)
+        const stepsData = (data as Record<string, unknown>)[config.columnName]
+        const loadedSteps = (stepsData ?? []) as SetupStep[]
+        setSteps(loadedSteps)
+        const firstIncomplete = loadedSteps.findIndex((s) => !s.completed)
         setCurrentStep(firstIncomplete === -1 ? 0 : firstIncomplete)
       } else {
         setHasError(true)
-        setIsLoading(false)
       }
       setIsLoading(false)
     }
     load()
-  }, [router])
+  }, [router, id])
 
-  const handleComplete = async (stepId: string) => {
+  const config = QUEST_CONFIG[id as keyof typeof QUEST_CONFIG]
+  if (!config) notFound()
+
+  const handleStepToggle = async (stepId: string) => {
+    setIsCompletingId(stepId)
     const updated = steps.map((s) =>
       s.id === stepId ? { ...s, completed: true } : s
     )
     setSteps(updated)
-    await updateQuestStepCompletion(projectId, 5, stepId, true)
+
+    if (id === 'q1') {
+      await updateStepCompletion(projectId, stepId, true)
+    } else {
+      await updateQuestStepCompletion(projectId, config.questNumber as 2 | 3 | 4 | 5, stepId, true)
+    }
+    setIsCompletingId(null)
 
     const nextIndex = updated.findIndex((s) => !s.completed)
-    if (nextIndex === -1) {
-      // 自動遷移しない。ユーザーが「ダッシュボードに戻る」を押す
-    } else {
+    if (nextIndex !== -1) {
       setCurrentStep(nextIndex)
     }
   }
 
   const allCompleted = steps.length > 0 && steps.every((s) => s.completed)
   const completedCount = steps.filter((s) => s.completed).length
+  const completionMessage = config.questNumber === null
+    ? '環境構築完了！'
+    : `クエスト${config.questNumber}完了！`
 
   if (hasError) {
     return (
@@ -113,7 +132,7 @@ export default function Quest5Page() {
 
         <div className="space-y-1">
           <h1 className="font-heading text-2xl font-bold text-foreground">
-            世界に公開しよう
+            {config.title}
           </h1>
           <p className="text-sm text-muted-foreground">
             {completedCount} / {steps.length} ステップ完了
@@ -130,7 +149,7 @@ export default function Quest5Page() {
         {allCompleted && (
           <div className="bg-accent/30 border border-accent rounded-2xl p-5 text-center space-y-2">
             <p className="text-2xl"><PartyPopper className="size-10 text-primary" /></p>
-            <p className="text-accent-foreground font-bold">クエスト5完了！</p>
+            <p className="text-accent-foreground font-bold">{completionMessage}</p>
             <button
               onClick={() => router.push('/')}
               className="inline-flex items-center gap-1 text-accent-foreground text-sm underline hover:opacity-80 transition"
@@ -189,10 +208,16 @@ export default function Quest5Page() {
                     </a>
                   )}
                   <button
-                    onClick={() => handleComplete(step.id)}
-                    className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition"
+                    onClick={() => handleStepToggle(step.id)}
+                    disabled={isCompletingId === step.id}
+                    className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
                   >
-                    できた
+                    {isCompletingId === step.id ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        確認中...
+                      </span>
+                    ) : 'できた'}
                   </button>
                 </div>
               )}

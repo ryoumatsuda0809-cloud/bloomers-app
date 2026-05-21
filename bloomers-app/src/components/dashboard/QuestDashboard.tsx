@@ -170,6 +170,7 @@ export default function QuestDashboard({ activeProjectId }: QuestDashboardProps)
                 onGitHubSave={handleGitHubSave}
                 gitHubSaveStatus={gitHubSaveStatus}
                 gitHubRepoUrl={gitHubRepoUrl}
+                href={quest.status === 'active' ? `/quest/${quest.id}` : undefined}
               />
               {index < quests.length - 1 && (
                 <QuestConnector fromStatus={quest.status} />

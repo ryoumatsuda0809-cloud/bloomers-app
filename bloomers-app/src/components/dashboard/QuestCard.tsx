@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, Circle, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface QuestCardProps {
   onGitHubSave?: () => Promise<void>;
   gitHubSaveStatus?: 'idle' | 'loading' | 'success' | 'error';
   gitHubRepoUrl?: string;
+  href?: string;
 }
 
 const STATUS_CONFIG = {
@@ -84,11 +86,10 @@ export default function QuestCard({
   onGitHubSave,
   gitHubSaveStatus = 'idle',
   gitHubRepoUrl = '',
+  href,
 }: QuestCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const config = STATUS_CONFIG[status];
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isLocked = status === "locked";
 
   const handleClick = async () => {
     if (config.disabled || isSubmitting) return;
@@ -130,46 +131,16 @@ export default function QuestCard({
       </CardHeader>
 
       <CardFooter className="pt-0 flex flex-col gap-2">
-        {id === 'q1' && status === 'active' && (
-          <a
-            href="/quest1"
+        {href && (
+          <Link
+            href={href}
             className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
           >
-            環境構築を始める
-          </a>
+            クエストを進める
+          </Link>
         )}
-        {id === 'q2' && status === 'active' && (
-          <a
-            href="/quest2"
-            className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
-          >
-            画面を作り始める
-          </a>
-        )}
-        {id === 'q3' && status === 'active' && (
-          <a
-            href="/quest3"
-            className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
-          >
-            データ連携を始める
-          </a>
-        )}
-        {id === 'q4' && status === 'active' && (
-          <a
-            href="/quest4"
-            className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
-          >
-            ログイン機能を作る
-          </a>
-        )}
-        {id === 'q5' && status === 'active' && (
+        {href && id === 'q5' && (
           <>
-            <a
-              href="/quest5"
-              className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
-            >
-              公開手順を見る
-            </a>
             {gitHubSaveStatus === 'idle' && (
               <Button
                 variant="outline"
