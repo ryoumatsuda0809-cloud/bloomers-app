@@ -9,6 +9,10 @@ export type SetupStep = {
   link?: string | null
   linkLabel?: string | null
   completed: boolean
+  type?: 'thinking' | 'task'
+  question?: string
+  placeholder?: string
+  userAnswer?: string
 }
 
 export async function generateSetupSteps(
@@ -332,5 +336,36 @@ export async function updateStepCompletion(
   await supabase
     .from('project_ideas')
     .update({ setup_steps: updated })
+    .eq('id', projectId)
+}
+
+export async function saveStepAnswer(
+  projectId: string,
+  questId: string,
+  stepId: string,
+  answer: string
+): Promise<void> {
+  const supabase = await createClient()
+
+  const config = await import('@/lib/quest-utils').then(m => m.QUEST_CONFIG)
+  const questConfig = config[questId as keyof typeof config]
+  if (!questConfig) return
+
+  const columnName = questConfig.columnName
+
+  const { data } = await supabase
+    .from('project_ideas')
+    .select(columnName)
+    .eq('id', projectId)
+    .single()
+
+  const steps = ((data as unknown as Record<string, unknown>)?.[columnName] ?? []) as SetupStep[]
+  const updated = steps.map((s) =>
+    s.id === stepId ? { ...s, userAnswer: answer } : s
+  )
+
+  await supabase
+    .from('project_ideas')
+    .update({ [columnName]: updated })
     .eq('id', projectId)
 }

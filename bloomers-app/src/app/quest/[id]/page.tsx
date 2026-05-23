@@ -14,6 +14,8 @@ import MentorWindow from '@/components/quest/MentorWindow'
 import QuestCompleteOverlay from '@/components/quest/QuestCompleteOverlay'
 import DecisionDialog from '@/components/quest/DecisionDialog'
 import NextQuestPreview from '@/components/quest/NextQuestPreview'
+import ThinkingStep from '@/components/quest/ThinkingStep'
+import { saveStepAnswer } from '@/app/actions/setup'
 
 export default function QuestPage() {
   const router = useRouter()
@@ -103,6 +105,35 @@ export default function QuestPage() {
     } else {
       await updateQuestStepCompletion(projectId, config.questNumber as 2 | 3 | 4 | 5, stepId, true)
     }
+    setIsCompletingId(null)
+
+    const nextIndex = updated.findIndex((s) => !s.completed)
+    if (nextIndex !== -1) {
+      setCurrentStep(nextIndex)
+    }
+  }
+
+  const handleThinkingComplete = async (stepId: string, answer: string) => {
+    setIsCompletingId(stepId)
+
+    await saveStepAnswer(projectId, id, stepId, answer)
+
+    const updated = steps.map((s) =>
+      s.id === stepId ? { ...s, completed: true, userAnswer: answer } : s
+    )
+    setSteps(updated)
+
+    if (id === 'q1') {
+      await updateStepCompletion(projectId, stepId, true)
+    } else {
+      await updateQuestStepCompletion(
+        projectId,
+        config.questNumber as 2 | 3 | 4 | 5,
+        stepId,
+        true
+      )
+    }
+
     setIsCompletingId(null)
 
     const nextIndex = updated.findIndex((s) => !s.completed)
@@ -238,28 +269,38 @@ export default function QuestPage() {
 
                 {index === currentStep && !step.completed && (
                   <div className="space-y-2 pl-10">
-                    {step.link && (
-                      <a
-                        href={step.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                      >
-                        <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
-                      </a>
+                    {step.type === 'thinking' ? (
+                      <ThinkingStep
+                        step={step}
+                        questId={id}
+                        onComplete={handleThinkingComplete}
+                      />
+                    ) : (
+                      <>
+                        {step.link && (
+                          <a
+                            href={step.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleStepToggle(step.id)}
+                          disabled={isCompletingId === step.id}
+                          className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
+                        >
+                          {isCompletingId === step.id ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              確認中...
+                            </span>
+                          ) : 'できた'}
+                        </button>
+                      </>
                     )}
-                    <button
-                      onClick={() => handleStepToggle(step.id)}
-                      disabled={isCompletingId === step.id}
-                      className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
-                    >
-                      {isCompletingId === step.id ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          確認中...
-                        </span>
-                      ) : 'できた'}
-                    </button>
                   </div>
                 )}
               </div>
