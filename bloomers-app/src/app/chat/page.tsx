@@ -7,7 +7,7 @@ import {
   sendMessage,
   clearChatHistory,
 } from '@/app/actions/chat'
-import type { ChatMessage } from '@/app/actions/chat'
+import type { ChatMessage, QuestContext } from '@/app/actions/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react'
 
@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isHistoryLoading, setIsHistoryLoading] = useState(true)
   const [newIdeaSaved, setNewIdeaSaved] = useState(false)
+  const [questContext, setQuestContext] = useState<QuestContext | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
 
@@ -41,6 +42,17 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    const questId = searchParams.get('questId')
+    const questTitle = searchParams.get('questTitle')
+    const stepTitle = searchParams.get('stepTitle')
+    const mentorMessage = searchParams.get('mentorMessage')
+
+    if (questId && questTitle && stepTitle && mentorMessage) {
+      setQuestContext({ questId, questTitle, stepTitle, mentorMessage })
+    }
+  }, [searchParams])
 
   useEffect(() => {
     const helpMessage = searchParams.get('help')
@@ -73,7 +85,7 @@ export default function ChatPage() {
         .filter((m) => m.id !== 'welcome')
         .map((m) => ({ role: m.role, content: m.content }))
 
-      const { reply, ideaGenerated } = await sendMessage(decoded, history)
+      const { reply, ideaGenerated } = await sendMessage(decoded, history, questContext ?? undefined)
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -115,7 +127,7 @@ export default function ChatPage() {
       .filter((m) => m.id !== 'welcome')
       .map((m) => ({ role: m.role, content: m.content }))
 
-    const { reply, ideaGenerated } = await sendMessage(userMessage, history)
+    const { reply, ideaGenerated } = await sendMessage(userMessage, history, questContext ?? undefined)
 
     const assistantMsg: ChatMessage = {
       id: `assistant-${Date.now()}`,
@@ -204,6 +216,14 @@ export default function ChatPage() {
           </div>
         ) : (
         <div className="px-4 py-6 pb-4 space-y-4 max-w-2xl mx-auto w-full">
+        {questContext && (
+          <div className="bg-muted/60 border border-border rounded-xl px-4 py-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground text-sm mb-0.5">
+              {questContext.questTitle} — {questContext.stepTitle}
+            </p>
+            <p>{questContext.mentorMessage}</p>
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}

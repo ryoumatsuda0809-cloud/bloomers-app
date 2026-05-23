@@ -12,6 +12,13 @@ export type ChatMessage = {
   createdAt: string
 }
 
+export type QuestContext = {
+  questId: string
+  questTitle: string
+  stepTitle: string
+  mentorMessage: string
+}
+
 export async function getChatHistory(): Promise<ChatMessage[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -43,7 +50,8 @@ export async function getChatHistory(): Promise<ChatMessage[]> {
 
 export async function sendMessage(
   userMessage: string,
-  history: { role: string; content: string }[]
+  history: { role: string; content: string }[],
+  questContext?: QuestContext
 ): Promise<{ reply: string; ideaGenerated?: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -93,7 +101,18 @@ ${i + 1}. ${c.trigger}
 `
     : ''
 
-  const systemPrompt = `${knowledgeContext}
+  const questContextPrompt = questContext ? `
+【ユーザーが今取り組んでいるクエスト】
+クエスト：${questContext.questTitle}
+今のステップ：${questContext.stepTitle}
+このステップの意味：${questContext.mentorMessage}
+
+ユーザーはこのステップで詰まっています。
+上記のステップに特化した助言を、技術用語を使わず3文以内でしてください。
+他の話題には答えず、このステップの解決に集中してください。
+` : ''
+
+  const systemPrompt = `${knowledgeContext}${questContextPrompt}
 あなたはBloomerというサービスの優しいメンターです。
 初心者の若者・大学生が「作りたいもの」を見つけるお手伝いをします。
 

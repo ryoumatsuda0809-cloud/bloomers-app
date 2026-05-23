@@ -310,11 +310,16 @@ export default function QuestPage() {
           <div className="pt-4 border-t border-border">
             <button
               onClick={() => {
-                const questTitle = steps[currentStep]?.title ?? 'このステップ'
-                const message = encodeURIComponent(
-                  `「${questTitle}」で詰まっています。助けてください。`
-                )
-                router.push(`/chat?help=${message}`)
+                const currentStepData = steps[currentStep]
+                const stepTitle = currentStepData?.title ?? 'このステップ'
+                const params = new URLSearchParams({
+                  help: `「${stepTitle}」で詰まっています。助けてください。`,
+                  questId: id,
+                  questTitle: config.title,
+                  stepTitle,
+                  mentorMessage: config.mentorMessage ?? '',
+                })
+                router.push(`/chat?${params.toString()}`)
               }}
               className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
             >
