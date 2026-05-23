@@ -7,6 +7,60 @@ import { Button } from '@/components/ui/button'
 import { generateIdeasWithAI, saveOnboardingData } from '@/app/actions/onboarding'
 import type { PersonalityData, IdeaCard } from '@/app/actions/onboarding'
 
+export default function OnboardingPage() {
+  const router = useRouter()
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-md text-center space-y-8">
+
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-3xl">🌸</span>
+          <span className="text-2xl font-bold text-foreground tracking-tight">Bloomers</span>
+        </div>
+
+        <div className="space-y-3">
+          <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
+            作りたいアプリ、<br />
+            もう決まっていますか？
+          </h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            あなたに合ったルートで始めましょう。
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => router.push('/onboarding/idea-interview')}
+            className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
+          >
+            <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
+              決まっています
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">
+              アイデアを4つの質問で実装可能な形に整理します
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push('/chat?mode=discover')}
+            className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
+          >
+            <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
+              まだ決まっていません
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">
+              メンターと話しながら、一緒に見つけましょう
+            </p>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// MBTIベースの旧オンボーディングフロー（/onboarding から切り離し済み・将来削除予定）
 const MBTI_TYPES = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
   'INFJ', 'INFP', 'ENFJ', 'ENFP',
@@ -14,7 +68,7 @@ const MBTI_TYPES = [
   'ISTP', 'ISFP', 'ESTP', 'ESFP',
 ]
 
-export default function OnboardingPage() {
+function LegacyOnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [timeUsage, setTimeUsage] = useState('')
