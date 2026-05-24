@@ -313,13 +313,12 @@ export default function QuestPage() {
                 const currentStepData = steps[currentStep]
                 const stepTitle = currentStepData?.title ?? 'このステップ'
                 const params = new URLSearchParams({
-                  help: `「${stepTitle}」で詰まっています。助けてください。`,
                   questId: id,
                   questTitle: config.title,
                   stepTitle,
                   mentorMessage: config.mentorMessage ?? '',
                 })
-                router.push(`/chat?${params.toString()}`)
+                router.push(`/ai-select?${params.toString()}`)
               }}
               className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
             >
