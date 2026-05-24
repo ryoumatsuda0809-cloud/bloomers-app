@@ -17,7 +17,8 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isHistoryLoading, setIsHistoryLoading] = useState(true)
-  const [newIdeaSaved, setNewIdeaSaved] = useState(false)
+  const [isIdeaConfirmed, setIsIdeaConfirmed] = useState(false)
+  const [isDiscoverMode, setIsDiscoverMode] = useState(false)
   const [questContext, setQuestContext] = useState<QuestContext | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
@@ -25,11 +26,14 @@ export default function ChatPage() {
   useEffect(() => {
     getChatHistory().then((history) => {
       if (history.length === 0) {
-        // 初回メッセージ
+        const genreLabel = searchParams.get('genreLabel')
+        const welcomeContent = genreLabel
+          ? `こんにちは！🌸 「${genreLabel}」に興味があるんですね。\n\nそこで感じた「これ不便だな」「こんなのあったらいいな」って、どんな小さなことでも聞かせてください。`
+          : 'こんにちは！🌸 作りたいものを一緒に見つけよう。\n\nまず聞かせて、最近「これ不便だな」って思ったことある？どんな小さなことでもいいよ。'
         setMessages([{
           id: 'welcome',
           role: 'assistant',
-          content: 'こんにちは！🌸 作りたいものを一緒に見つけよう。\n\nまず聞かせて、最近「これ不便だな」って思ったことある？どんな小さなことでもいいよ。',
+          content: welcomeContent,
           createdAt: new Date().toISOString(),
         }])
       } else {
@@ -37,7 +41,7 @@ export default function ChatPage() {
       }
       setIsHistoryLoading(false)
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -51,6 +55,12 @@ export default function ChatPage() {
 
     if (questId && questTitle && stepTitle && mentorMessage) {
       setQuestContext({ questId, questTitle, stepTitle, mentorMessage })
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (searchParams.get('mode') === 'discover') {
+      setIsDiscoverMode(true)
     }
   }, [searchParams])
 
@@ -96,8 +106,15 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, assistantMsg])
 
       if (ideaGenerated) {
-        setNewIdeaSaved(true)
-        setTimeout(() => setNewIdeaSaved(false), 5000)
+        setIsIdeaConfirmed(true)
+        const confirmMsg: ChatMessage = {
+          id: `confirm-${Date.now()}`,
+          role: 'assistant',
+          content: 'アイデアが決まりました！\nダッシュボードでクエストを始めましょう。',
+          createdAt: new Date().toISOString(),
+        }
+        setMessages((prev) => [...prev, confirmMsg])
+        setTimeout(() => router.push('/'), 3000)
       }
 
       setIsLoading(false)
@@ -138,8 +155,15 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, assistantMsg])
 
     if (ideaGenerated) {
-      setNewIdeaSaved(true)
-      setTimeout(() => setNewIdeaSaved(false), 5000)
+      setIsIdeaConfirmed(true)
+      const confirmMsg: ChatMessage = {
+        id: `confirm-${Date.now()}`,
+        role: 'assistant',
+        content: 'アイデアが決まりました！\nダッシュボードでクエストを始めましょう。',
+        createdAt: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, confirmMsg])
+      setTimeout(() => router.push('/'), 3000)
     }
 
     setIsLoading(false)
@@ -177,26 +201,23 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-        <button
-          onClick={handleClear}
-          className="text-xs text-muted-foreground hover:text-foreground transition"
-        >
-          リセット
-        </button>
-      </div>
-
-      {/* 新しいアイデア保存通知 */}
-      {newIdeaSaved && (
-        <div className="bg-primary text-primary-foreground text-sm py-2 px-4 flex items-center justify-center gap-3">
-          <span>新しいプロジェクト案を保存しました</span>
-          <a
-            href="/projects"
-            className="inline-flex items-center gap-1 underline font-medium shrink-0"
+        <div className="flex items-center gap-2">
+          {isDiscoverMode && !isIdeaConfirmed && (
+            <button
+              onClick={() => router.push('/')}
+              className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
+            >
+              スキップ
+            </button>
+          )}
+          <button
+            onClick={handleClear}
+            className="text-xs text-muted-foreground hover:text-foreground transition"
           >
-            確認する <ArrowRight className="size-4" />
-          </a>
+            リセット
+          </button>
         </div>
-      )}
+      </div>
 
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto">
@@ -267,34 +288,53 @@ export default function ChatPage() {
       </div>
 
       {/* 入力欄 */}
-      <div className="bg-card border-t border-border px-4 py-3 sticky bottom-0">
-        <div className="max-w-2xl mx-auto flex gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-            placeholder="メッセージを入力..."
-            rows={1}
-            className="flex-1 border border-border rounded-2xl px-4 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-2xl flex items-center justify-center transition shrink-0 self-end"
-            aria-label="メッセージを送信"
-          >
-            <ArrowUp className="size-4" />
-          </button>
+      {!isIdeaConfirmed && (
+        <div className="bg-card border-t border-border px-4 py-3 sticky bottom-0">
+          <div className="max-w-2xl mx-auto flex gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
+              placeholder="メッセージを入力..."
+              rows={1}
+              className="flex-1 border border-border rounded-2xl px-4 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-2xl flex items-center justify-center transition shrink-0 self-end"
+              aria-label="メッセージを送信"
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Enterで送信・Shift+Enterで改行
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Enterで送信・Shift+Enterで改行
-        </p>
-      </div>
+      )}
+
+      {isIdeaConfirmed && (
+        <div className="bg-card border-t border-border px-4 py-4 sticky bottom-0">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={() => router.push('/')}
+              className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold rounded-2xl hover:bg-primary/90 transition flex items-center justify-center gap-2"
+            >
+              ダッシュボードへ進む
+              <ArrowRight className="size-4" />
+            </button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              3秒後に自動で移動します
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   )

@@ -9,51 +9,114 @@ import type { PersonalityData, IdeaCard } from '@/app/actions/onboarding'
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const [showGenreSelect, setShowGenreSelect] = useState(false)
+  const [selectedGenre, setSelectedGenre] = useState<string>('')
+
+  const GENRES = [
+    { id: 'local', label: '地域・地元の課題', emoji: '🏘️' },
+    { id: 'school', label: '学校・大学生活', emoji: '🎓' },
+    { id: 'hobby', label: '趣味・好きなこと', emoji: '🎸' },
+    { id: 'work', label: 'バイト・仕事の効率化', emoji: '💼' },
+    { id: 'daily', label: '日常の不便・もったいない', emoji: '💡' },
+    { id: 'other', label: 'まだ分からない', emoji: '🌱' },
+  ]
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-md text-center space-y-8">
+      <div className="w-full max-w-md space-y-8">
 
         <div className="flex items-center justify-center gap-2">
           <span className="text-3xl">🌸</span>
           <span className="text-2xl font-bold text-foreground tracking-tight">Bloomers</span>
         </div>
 
-        <div className="space-y-3">
-          <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
-            作りたいアプリ、<br />
-            もう決まっていますか？
-          </h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            あなたに合ったルートで始めましょう。
-          </p>
-        </div>
+        {showGenreSelect ? (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="font-heading text-xl font-bold text-foreground">
+                どんな分野に興味がありますか？
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                ざっくりで大丈夫です。後から変えられます。
+              </p>
+            </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={() => router.push('/onboarding/idea-interview')}
-            className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
-          >
-            <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
-              決まっています
-            </p>
-            <p className="text-muted-foreground text-xs mt-1">
-              アイデアを4つの質問で実装可能な形に整理します
-            </p>
-          </button>
+            <div className="grid grid-cols-2 gap-2">
+              {GENRES.map((genre) => (
+                <button
+                  key={genre.id}
+                  onClick={() => setSelectedGenre(genre.id)}
+                  className={`h-auto py-3 px-4 rounded-xl border text-left transition ${
+                    selectedGenre === genre.id
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'bg-card border-border text-foreground hover:border-primary hover:bg-muted'
+                  }`}
+                >
+                  <span className="text-lg block mb-0.5">{genre.emoji}</span>
+                  <span className="text-xs font-medium leading-snug">{genre.label}</span>
+                </button>
+              ))}
+            </div>
 
-          <button
-            onClick={() => router.push('/chat?mode=discover')}
-            className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
-          >
-            <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
-              まだ決まっていません
-            </p>
-            <p className="text-muted-foreground text-xs mt-1">
-              メンターと話しながら、一緒に見つけましょう
-            </p>
-          </button>
-        </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams({ mode: 'discover' })
+                  if (selectedGenre) params.set('genre', selectedGenre)
+                  const genreLabel = GENRES.find(g => g.id === selectedGenre)?.label ?? ''
+                  if (genreLabel) params.set('genreLabel', genreLabel)
+                  router.push(`/chat?${params.toString()}`)
+                }}
+                disabled={!selectedGenre}
+                className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold rounded-2xl hover:bg-primary/90 transition disabled:opacity-50"
+              >
+                メンターと話す
+              </button>
+              <button
+                onClick={() => setShowGenreSelect(false)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground transition py-2"
+              >
+                戻る
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center space-y-3">
+            <div className="space-y-3">
+              <h1 className="font-heading text-2xl font-bold text-foreground leading-snug">
+                作りたいアプリ、<br />
+                もう決まっていますか？
+              </h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                あなたに合ったルートで始めましょう。
+              </p>
+            </div>
+
+            <button
+              onClick={() => router.push('/onboarding/idea-interview')}
+              className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
+            >
+              <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
+                決まっています
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                アイデアを4つの質問で実装可能な形に整理します
+              </p>
+            </button>
+
+            <button
+              onClick={() => setShowGenreSelect(true)}
+              className="w-full h-auto py-5 bg-card hover:bg-muted border border-border hover:border-primary rounded-2xl transition group text-left px-5"
+            >
+              <p className="text-foreground font-semibold group-hover:text-primary transition-colors">
+                まだ決まっていません
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                メンターと話しながら、一緒に見つけましょう
+              </p>
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

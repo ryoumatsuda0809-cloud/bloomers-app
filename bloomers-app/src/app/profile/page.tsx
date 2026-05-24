@@ -250,6 +250,22 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* アイデアを探し直す */}
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="text-sm font-semibold text-foreground">
+            別のアイデアを探す
+          </p>
+          <p className="text-xs text-muted-foreground">
+            メンターと話しながら、新しいアイデアを見つけられます。
+          </p>
+          <button
+            onClick={() => router.push('/chat?mode=discover')}
+            className="w-full h-10 bg-card border border-border text-foreground text-sm font-semibold rounded-xl hover:bg-muted transition"
+          >
+            メンターとアイデアを探す
+          </button>
+        </div>
+
         {/* 再質問 */}
         <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
           <p className="text-sm font-semibold text-foreground">最初からやり直す</p>
