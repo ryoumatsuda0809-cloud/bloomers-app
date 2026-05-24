@@ -7,6 +7,7 @@ import {
   sendMessage,
   clearChatHistory,
 } from '@/app/actions/chat'
+import { skipOnboarding } from '@/app/actions/onboarding'
 import type { ChatMessage, QuestContext } from '@/app/actions/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react'
@@ -204,7 +205,10 @@ export default function ChatPage() {
         <div className="flex items-center gap-2">
           {isDiscoverMode && !isIdeaConfirmed && (
             <button
-              onClick={() => router.push('/')}
+              onClick={async () => {
+                await skipOnboarding()
+                router.push('/')
+              }}
               className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
             >
               スキップ

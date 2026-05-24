@@ -283,3 +283,19 @@ export async function resetOnboarding(): Promise<{ success?: boolean; error?: st
   if (error) return { error: 'リセットに失敗しました。' }
   return { success: true }
 }
+
+export async function skipOnboarding(): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      onboarding_completed: true,
+    })
+    .eq('id', user.id)
+
+  if (error) return { error: 'スキップに失敗しました。' }
+  return { success: true }
+}
