@@ -20,6 +20,7 @@ export default function ChatPage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true)
   const [isIdeaConfirmed, setIsIdeaConfirmed] = useState(false)
   const [isDiscoverMode, setIsDiscoverMode] = useState(false)
+  const [genreLabel, setGenreLabel] = useState<string>('')
   const [questContext, setQuestContext] = useState<QuestContext | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
@@ -62,6 +63,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (searchParams.get('mode') === 'discover') {
       setIsDiscoverMode(true)
+      const label = searchParams.get('genreLabel') ?? ''
+      setGenreLabel(label)
     }
   }, [searchParams])
 
@@ -96,7 +99,7 @@ export default function ChatPage() {
         .filter((m) => m.id !== 'welcome')
         .map((m) => ({ role: m.role, content: m.content }))
 
-      const { reply, ideaGenerated } = await sendMessage(decoded, history, questContext ?? undefined)
+      const { reply, ideaGenerated } = await sendMessage(decoded, history, questContext ?? undefined, isDiscoverMode ? (genreLabel || true) : undefined)
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -145,7 +148,7 @@ export default function ChatPage() {
       .filter((m) => m.id !== 'welcome')
       .map((m) => ({ role: m.role, content: m.content }))
 
-    const { reply, ideaGenerated } = await sendMessage(userMessage, history, questContext ?? undefined)
+    const { reply, ideaGenerated } = await sendMessage(userMessage, history, questContext ?? undefined, isDiscoverMode ? (genreLabel || true) : undefined)
 
     const assistantMsg: ChatMessage = {
       id: `assistant-${Date.now()}`,
