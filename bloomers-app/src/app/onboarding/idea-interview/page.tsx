@@ -31,6 +31,7 @@ export default function IdeaInterviewPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
+  const [turnCountInPhase, setTurnCountInPhase] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -164,6 +165,11 @@ export default function IdeaInterviewPage() {
 
     setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     setState(nextState)
+    if (nextState.phase === state.phase) {
+      setTurnCountInPhase((prev) => prev + 1)
+    } else {
+      setTurnCountInPhase(0)
+    }
     setIsLoading(false)
   }
 
@@ -173,11 +179,27 @@ export default function IdeaInterviewPage() {
     <div className="min-h-screen bg-background flex flex-col">
 
       <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-2">
-          <span className="text-xl">🌸</span>
-          <div>
-            <p className="text-sm font-semibold text-foreground">企画を整理する</p>
-            <p className="text-xs text-muted-foreground">あなたのアイデアを実現可能な形に</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🌸</span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">企画を整理する</p>
+              <p className="text-xs text-muted-foreground">あなたのアイデアを実現可能な形に</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/')}
+              className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
+            >
+              スキップ
+            </button>
+            <button
+              onClick={() => router.back()}
+              className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
+            >
+              戻る
+            </button>
           </div>
         </div>
       </header>
@@ -227,9 +249,58 @@ export default function IdeaInterviewPage() {
             </div>
           )}
 
+          {turnCountInPhase >= 2 &&
+            !isLoading &&
+            !isSummarizing &&
+            state.phase !== 'revise' &&
+            state.phase !== 'summary' && (
+            <div className="flex justify-center py-2">
+              <button
+                onClick={() => {
+                  const order = ['background', 'action', 'problem', 'ideal', 'summary'] as const
+                  const currentIdx = order.indexOf(state.phase as typeof order[number])
+                  if (currentIdx >= 0 && currentIdx < order.length - 1) {
+                    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content ?? ''
+                    const updatedAnswers = { ...state.answers }
+                    if (state.phase === 'background') updatedAnswers.background = lastUserMsg
+                    if (state.phase === 'action') updatedAnswers.action = lastUserMsg
+                    if (state.phase === 'problem') updatedAnswers.problem = lastUserMsg
+                    if (state.phase === 'ideal') updatedAnswers.ideal = lastUserMsg
+                    setState(prev => ({
+                      ...prev,
+                      phase: order[currentIdx + 1],
+                      answers: updatedAnswers,
+                      isPhaseDone: true,
+                    }))
+                    setTurnCountInPhase(0)
+                  }
+                }}
+                className="text-xs text-primary hover:underline px-4 py-2 rounded-lg hover:bg-accent/20 transition"
+              >
+                次のフェーズへ進む →
+              </button>
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
       </div>
+
+      {state.phase === 'revise' && !isLoading && !isSummarizing && (
+        <div className="max-w-2xl mx-auto w-full px-4 pb-2 flex gap-2">
+          <button
+            onClick={() => {
+              const fakeMsg = '大丈夫です、このまま進めてください。'
+              setMessages(prev => [...prev, { role: 'user', content: fakeMsg }])
+              setIsLoading(true)
+              handleFinalize(state).finally(() => setIsLoading(false))
+            }}
+            className="flex-1 h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition"
+          >
+            このまま確定して進む
+          </button>
+        </div>
+      )}
 
       <div className="bg-card border-t border-border px-4 py-3 sticky bottom-0">
         <div className="max-w-2xl mx-auto flex gap-2">
