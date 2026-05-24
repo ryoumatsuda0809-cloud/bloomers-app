@@ -199,7 +199,7 @@ export default function IdeaInterviewPage() {
               スキップ
             </button>
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/onboarding')}
               className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
             >
               戻る
