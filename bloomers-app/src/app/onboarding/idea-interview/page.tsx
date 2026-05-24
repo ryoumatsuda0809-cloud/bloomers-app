@@ -10,6 +10,7 @@ import {
   type InterviewState,
   type InterviewTurn,
 } from '@/app/actions/idea-interview'
+import { skipOnboarding } from '@/app/actions/onboarding'
 
 const INITIAL_MESSAGE = `あなたのアプリのアイデア、一緒に形にしていきましょう。
 
@@ -189,7 +190,10 @@ export default function IdeaInterviewPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.push('/')}
+              onClick={async () => {
+                await skipOnboarding()
+                router.push('/')
+              }}
               className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-muted"
             >
               スキップ
