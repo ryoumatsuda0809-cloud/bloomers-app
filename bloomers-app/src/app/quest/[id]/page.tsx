@@ -11,6 +11,7 @@ import { ArrowLeft, ExternalLink, AlertTriangle } from 'lucide-react'
 import { QUEST_CONFIG } from '@/lib/quest-utils'
 import QuestHeader from '@/components/quest/QuestHeader'
 import MentorWindow from '@/components/quest/MentorWindow'
+import MentorPanel from '@/components/quest/MentorPanel'
 import QuestCompleteOverlay from '@/components/quest/QuestCompleteOverlay'
 import DecisionDialog from '@/components/quest/DecisionDialog'
 import NextQuestPreview from '@/components/quest/NextQuestPreview'
@@ -201,133 +202,131 @@ export default function QuestPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-background px-4 py-8">
-        <div className="max-w-lg mx-auto space-y-6">
+      <div className="min-h-screen bg-background flex flex-col xl:flex-row">
 
-          <button
-            onClick={() => router.push('/')}
-            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition text-sm py-2"
-          >
-            <ArrowLeft className="size-4" /> ダッシュボードに戻る
-          </button>
+        {/* メインコンテンツ */}
+        <div className="flex-1 min-w-0 px-4 py-8 xl:overflow-y-auto">
+          <div className="max-w-lg mx-auto space-y-6">
 
-          <QuestHeader
-            title={config.title}
-            estimatedMinutes={config.estimatedMinutes}
-            difficulty={config.difficulty}
-            hiddenPrompt={config.hiddenPrompt}
-          />
-
-          <p className="text-sm text-muted-foreground">
-            {completedCount} / {steps.length} ステップ完了
-          </p>
-
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
-            />
-          </div>
-
-          <MentorWindow message={config.mentorMessage} />
-
-          <div className="space-y-3">
-            {steps.map((step, index) => (
-              <div
-                key={step.id}
-                className={`bg-card rounded-2xl border p-5 space-y-3 transition ${
-                  step.completed
-                    ? 'border-accent bg-accent/30'
-                    : index === currentStep
-                    ? 'border-primary shadow-sm'
-                    : 'border-border opacity-50'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
-                    step.completed
-                      ? 'bg-accent text-accent-foreground'
-                      : index === currentStep
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {step.completed ? '✓' : index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-semibold text-sm ${
-                      step.completed ? 'text-accent-foreground' : 'text-foreground'
-                    }`}>
-                      {step.title}
-                    </p>
-                    {index === currentStep && !step.completed && (
-                      <p className="text-muted-foreground text-xs mt-1">
-                        {step.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {index === currentStep && !step.completed && (
-                  <div className="space-y-2 pl-10">
-                    {step.type === 'thinking' ? (
-                      <ThinkingStep
-                        step={step}
-                        questId={id}
-                        onComplete={handleThinkingComplete}
-                      />
-                    ) : (
-                      <>
-                        {step.link && (
-                          <a
-                            href={step.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                          >
-                            <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
-                          </a>
-                        )}
-                        <button
-                          onClick={() => handleStepToggle(step.id)}
-                          disabled={isCompletingId === step.id}
-                          className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
-                        >
-                          {isCompletingId === step.id ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              確認中...
-                            </span>
-                          ) : 'できた'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-4 border-t border-border">
             <button
-              onClick={() => {
-                const currentStepData = steps[currentStep]
-                const stepTitle = currentStepData?.title ?? 'このステップ'
-                const params = new URLSearchParams({
-                  questId: id,
-                  questTitle: config.title,
-                  stepTitle,
-                  mentorMessage: config.mentorMessage ?? '',
-                })
-                router.push(`/ai-select?${params.toString()}`)
-              }}
-              className="w-full py-3 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 rounded-2xl transition flex items-center justify-center gap-2"
+              onClick={() => router.push('/')}
+              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition text-sm py-2"
             >
-              <span>🆘</span>
-              <span>詰まったら相談する</span>
+              <ArrowLeft className="size-4" /> ダッシュボードに戻る
             </button>
-          </div>
 
+            <QuestHeader
+              title={config.title}
+              estimatedMinutes={config.estimatedMinutes}
+              difficulty={config.difficulty}
+              hiddenPrompt={config.hiddenPrompt}
+            />
+
+            <p className="text-sm text-muted-foreground">
+              {completedCount} / {steps.length} ステップ完了
+            </p>
+
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
+              />
+            </div>
+
+            <MentorWindow message={config.mentorMessage} />
+
+            <div className="space-y-3">
+              {steps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`bg-card rounded-2xl border p-5 space-y-3 transition ${
+                    step.completed
+                      ? 'border-accent bg-accent/30'
+                      : index === currentStep
+                      ? 'border-primary shadow-sm'
+                      : 'border-border opacity-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                      step.completed
+                        ? 'bg-accent text-accent-foreground'
+                        : index === currentStep
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {step.completed ? '✓' : index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-semibold text-sm ${
+                        step.completed ? 'text-accent-foreground' : 'text-foreground'
+                      }`}>
+                        {step.title}
+                      </p>
+                      {index === currentStep && !step.completed && (
+                        <p className="text-muted-foreground text-xs mt-1">
+                          {step.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {index === currentStep && !step.completed && (
+                    <div className="space-y-2 pl-10">
+                      {step.type === 'thinking' ? (
+                        <ThinkingStep
+                          step={step}
+                          questId={id}
+                          onComplete={handleThinkingComplete}
+                        />
+                      ) : (
+                        <>
+                          {step.link && (
+                            <a
+                              href={step.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <ExternalLink className="size-3" /> {step.linkLabel ?? 'リンクを開く'}
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleStepToggle(step.id)}
+                            disabled={isCompletingId === step.id}
+                            className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition disabled:opacity-70"
+                          >
+                            {isCompletingId === step.id ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                確認中...
+                              </span>
+                            ) : 'できた'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* モバイルFABのための下部余白 */}
+            <div className="xl:hidden h-24" />
+
+          </div>
         </div>
+
+        {/* MentorPanel（デスクトップ常駐 + モバイルSheet を内包）*/}
+        {projectId && (
+          <MentorPanel
+            questId={id}
+            questTitle={config.title}
+            stepTitle={steps[currentStep]?.title ?? ''}
+            projectId={projectId}
+          />
+        )}
+
       </div>
 
       {showCompleteOverlay && (
