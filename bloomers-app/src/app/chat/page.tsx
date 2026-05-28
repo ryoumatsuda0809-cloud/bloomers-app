@@ -11,6 +11,16 @@ import { skipOnboarding } from '@/app/actions/onboarding'
 import type { ChatMessage, QuestContext } from '@/app/actions/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 function ChatContent() {
   const router = useRouter()
@@ -22,6 +32,11 @@ function ChatContent() {
   const [isDiscoverMode, setIsDiscoverMode] = useState(false)
   const [genreLabel, setGenreLabel] = useState<string>('')
   const [questContext, setQuestContext] = useState<QuestContext | null>(null)
+  const [mentorMode, setMentorMode] = useState<'idea' | 'dev' | 'general'>('general')
+  const [showModeMenu, setShowModeMenu] = useState(false)
+  const [top5Ideas, setTop5Ideas] = useState<string[]>([])
+  const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null)
+  const [showIdeaChoiceDialog, setShowIdeaChoiceDialog] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
 
@@ -101,10 +116,19 @@ function ChatContent() {
 
       const { reply, ideaGenerated } = await sendMessage(decoded, history, questContext ?? undefined, isDiscoverMode ? (genreLabel || true) : undefined)
 
+      const top5Match = reply.match(/%%%TOP5%%%([\s\S]*?)%%%END%%%/)
+      if (top5Match && isDiscoverMode) {
+        try {
+          const ideas = JSON.parse(top5Match[1].trim()) as string[]
+          setTop5Ideas(ideas)
+        } catch { /* パース失敗は無視 */ }
+      }
+      const finalReply = reply.replace(/%%%TOP5%%%([\s\S]*?)%%%END%%%/, '').trim()
+
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: reply,
+        content: finalReply,
         createdAt: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, assistantMsg])
@@ -127,11 +151,12 @@ function ChatContent() {
     return () => clearTimeout(timer)
   }, [isHistoryLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+  const handleSend = async (messageText?: string) => {
+    const text = (messageText ?? input).trim()
+    if (!text || isLoading) return
 
-    const userMessage = input.trim()
-    setInput('')
+    const userMessage = text
+    if (!messageText) setInput('')
     setIsLoading(true)
 
     // ユーザーメッセージを即時表示
@@ -150,10 +175,19 @@ function ChatContent() {
 
     const { reply, ideaGenerated } = await sendMessage(userMessage, history, questContext ?? undefined, isDiscoverMode ? (genreLabel || true) : undefined)
 
+    const top5Match = reply.match(/%%%TOP5%%%([\s\S]*?)%%%END%%%/)
+    if (top5Match && isDiscoverMode) {
+      try {
+        const ideas = JSON.parse(top5Match[1].trim()) as string[]
+        setTop5Ideas(ideas)
+      } catch { /* パース失敗は無視 */ }
+    }
+    const finalReply = reply.replace(/%%%TOP5%%%([\s\S]*?)%%%END%%%/, '').trim()
+
     const assistantMsg: ChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: reply,
+      content: finalReply,
       createdAt: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, assistantMsg])
@@ -185,6 +219,7 @@ function ChatContent() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col">
 
       {/* ヘッダー */}
@@ -289,6 +324,30 @@ function ChatContent() {
           </div>
         )}
 
+        {top5Ideas.length > 0 && selectedIdeaIndex === null && (
+          <div className="flex justify-start">
+            <div className="w-7 h-7 rounded-full bg-accent/40 flex items-center justify-center text-sm mr-2 shrink-0 mt-1">
+              🌸
+            </div>
+            <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3 max-w-[80%] space-y-2">
+              <p className="text-sm font-medium text-foreground">どれが一番刺さりますか？</p>
+              {top5Ideas.map((idea, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setSelectedIdeaIndex(i)
+                    setShowIdeaChoiceDialog(true)
+                  }}
+                  className="w-full text-left text-xs px-3 py-2 rounded-xl border border-border bg-background hover:border-primary hover:bg-accent/20 transition"
+                >
+                  <span className="font-semibold text-primary mr-2">{i + 1}.</span>
+                  {idea}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
         </div>
         )}
@@ -298,6 +357,39 @@ function ChatContent() {
       {!isIdeaConfirmed && (
         <div className="bg-card border-t border-border px-4 py-3 sticky bottom-0">
           <div className="max-w-2xl mx-auto flex gap-2">
+            <div className="relative self-end">
+              <button
+                onClick={() => setShowModeMenu(!showModeMenu)}
+                className="w-10 h-10 flex items-center justify-center rounded-2xl border border-border bg-card hover:bg-muted transition text-muted-foreground font-bold"
+                aria-label="メンターモードを選択"
+              >
+                +
+              </button>
+              {showModeMenu && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowModeMenu(false)} />
+                  <div className="absolute bottom-12 left-0 bg-card border border-border rounded-2xl shadow-lg py-2 z-40 w-52">
+                    {[
+                      { mode: 'idea' as const, icon: '🌱', label: 'アイデアを一緒に考える' },
+                      { mode: 'dev' as const, icon: '🔧', label: '開発の問題を解決する' },
+                      { mode: 'general' as const, icon: '💬', label: 'なんでも相談する' },
+                    ].map((item) => (
+                      <button
+                        key={item.mode}
+                        onClick={() => { setMentorMode(item.mode); setShowModeMenu(false) }}
+                        className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition hover:bg-muted ${
+                          mentorMode === item.mode ? 'text-primary font-semibold' : 'text-foreground'
+                        }`}
+                      >
+                        <span>{item.icon}</span>
+                        {item.label}
+                        {mentorMode === item.mode && <span className="ml-auto text-xs">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -312,7 +404,7 @@ function ChatContent() {
               className="flex-1 border border-border rounded-2xl px-4 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32"
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
               className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-2xl flex items-center justify-center transition shrink-0 self-end"
               aria-label="メッセージを送信"
@@ -344,6 +436,47 @@ function ChatContent() {
       )}
 
     </div>
+
+    <AlertDialog open={showIdeaChoiceDialog} onOpenChange={setShowIdeaChoiceDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>どうしますか？</AlertDialogTitle>
+          <AlertDialogDescription>
+            {selectedIdeaIndex !== null && top5Ideas[selectedIdeaIndex]
+              ? `「${top5Ideas[selectedIdeaIndex]}」を選びましたね。`
+              : 'アイデアが選ばれました。'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2">
+          <AlertDialogAction
+            onClick={() => {
+              setShowIdeaChoiceDialog(false)
+              const idea = selectedIdeaIndex !== null ? top5Ideas[selectedIdeaIndex] : ''
+              setTop5Ideas([])
+              setSelectedIdeaIndex(null)
+              handleSend(`${idea}についてもっと深掘りしたいです。`)
+            }}
+            className="w-full bg-card border border-border text-foreground hover:bg-muted"
+          >
+            もっと深掘りする
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => {
+              setShowIdeaChoiceDialog(false)
+              const idea = selectedIdeaIndex !== null ? top5Ideas[selectedIdeaIndex] : ''
+              setTop5Ideas([])
+              setSelectedIdeaIndex(null)
+              handleSend(`「${idea}」でクエストを作ってください。`)
+            }}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            このまま実装へ
+          </AlertDialogAction>
+          <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
 

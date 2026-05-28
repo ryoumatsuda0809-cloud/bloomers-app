@@ -14,10 +14,14 @@ import {
   User, Folder, MessageCircle, LogOut, PartyPopper,
   CheckCircle2, Circle, Lock, Sparkles,
 } from 'lucide-react'
+import MentorPanel from '@/components/quest/MentorPanel'
 
-type QuestDashboardProps = { activeProjectId: string }
+type QuestDashboardProps = {
+  activeProjectId: string
+  mentorOpen?: boolean
+}
 
-export default function QuestDashboard({ activeProjectId }: QuestDashboardProps) {
+export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDashboardProps) {
   const router = useRouter()
   const quests = useQuestStore((state) => state.quests)
   const completeQuest = useQuestStore((state) => state.completeQuest)
@@ -132,7 +136,7 @@ export default function QuestDashboard({ activeProjectId }: QuestDashboardProps)
       </aside>
 
       {/* メインコンテンツ */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-x-hidden">
 
         {/* モバイルヘッダー */}
         <header className="lg:hidden bg-card border-b border-border px-4 py-3 sticky top-0 z-10">
@@ -212,6 +216,17 @@ export default function QuestDashboard({ activeProjectId }: QuestDashboardProps)
           )}
         </main>
       </div>
+
+      {/* 右カラム：アイデアメンター（ダッシュボード専用） */}
+      {activeProjectId && (
+        <MentorPanel
+          questId="dashboard"
+          questTitle="アイデアを育てよう"
+          projectId={activeProjectId}
+          mode="idea"
+          initialOpen={mentorOpen}
+        />
+      )}
     </div>
   )
 }

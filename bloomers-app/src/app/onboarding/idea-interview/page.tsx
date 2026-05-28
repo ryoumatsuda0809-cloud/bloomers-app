@@ -11,6 +11,16 @@ import {
   type InterviewTurn,
 } from '@/app/actions/idea-interview'
 import { skipOnboarding } from '@/app/actions/onboarding'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 const INITIAL_MESSAGE = `あなたのアプリのアイデア、一緒に形にしていきましょう。
 
@@ -33,6 +43,7 @@ export default function IdeaInterviewPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
   const [turnCountInPhase, setTurnCountInPhase] = useState(0)
+  const [showChoiceDialog, setShowChoiceDialog] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -75,25 +86,17 @@ export default function IdeaInterviewPage() {
     setIsSummarizing(false)
   }
 
-  const handleFinalize = async (currentState: InterviewState) => {
-    if (!currentState.finalSummary) return
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content:
-          'ありがとうございました。あなたのアプリの企画が確定しました。\n\nダッシュボードへ移動します...',
-      },
-    ])
-    const { error } = await finalizeInterview(currentState.finalSummary, currentState.answers)
+  const handleFinalize = async (): Promise<boolean> => {
+    if (!state.finalSummary) return false
+    const { error } = await finalizeInterview(state.finalSummary, state.answers)
     if (error) {
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: '保存に失敗しました。もう一度試してください。' },
       ])
-      return
+      return false
     }
-    setTimeout(() => router.push('/'), 1500)
+    return true
   }
 
   const handleSend = async () => {
@@ -134,7 +137,7 @@ export default function IdeaInterviewPage() {
 
       const confirmKeywords = ['大丈夫', 'ok', 'はい', '進めて', 'いいえ', 'これで', 'ok']
       if (confirmKeywords.some((k) => lower.includes(k))) {
-        await handleFinalize(state)
+        setShowChoiceDialog(true)
         setIsLoading(false)
         return
       }
@@ -177,6 +180,7 @@ export default function IdeaInterviewPage() {
   const isDone = state.phase === 'done'
 
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col">
 
       <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-10">
@@ -293,12 +297,7 @@ export default function IdeaInterviewPage() {
       {state.phase === 'revise' && !isLoading && !isSummarizing && (
         <div className="max-w-2xl mx-auto w-full px-4 pb-2 flex gap-2">
           <button
-            onClick={() => {
-              const fakeMsg = '大丈夫です、このまま進めてください。'
-              setMessages(prev => [...prev, { role: 'user', content: fakeMsg }])
-              setIsLoading(true)
-              handleFinalize(state).finally(() => setIsLoading(false))
-            }}
+            onClick={() => setShowChoiceDialog(true)}
             className="flex-1 h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition"
           >
             このまま確定して進む
@@ -337,5 +336,46 @@ export default function IdeaInterviewPage() {
       </div>
 
     </div>
+
+    <AlertDialog open={showChoiceDialog} onOpenChange={setShowChoiceDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>どうしますか？</AlertDialogTitle>
+          <AlertDialogDescription>
+            アイデアの整理ができました。次のステップを選んでください。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2">
+          <AlertDialogAction
+            onClick={() => {
+              setShowChoiceDialog(false)
+              setState((prev) => ({ ...prev, phase: 'background', isPhaseDone: false }))
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: 'では、さらに深掘りしていきましょう。\nどんな背景でこのアイデアを思いついたんですか？',
+                },
+              ])
+            }}
+            className="w-full bg-card border border-border text-foreground hover:bg-muted"
+          >
+            深掘りする（4つの質問で徹底整理）
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={async () => {
+              setShowChoiceDialog(false)
+              const success = await handleFinalize()
+              if (success) router.push('/?mentorOpen=true')
+            }}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            パパっと整理して実装へ
+          </AlertDialogAction>
+          <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

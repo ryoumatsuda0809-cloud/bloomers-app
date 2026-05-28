@@ -5,7 +5,13 @@ import { getOnboardingStatus, getSelectedIdea } from '@/app/actions/onboarding'
 import QuestStoreInitializer from '@/components/dashboard/QuestStoreInitializer'
 import QuestDashboard from '@/components/dashboard/QuestDashboard'
 
-export default async function Home() {
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function Home({ searchParams }: Props) {
+  const params = await searchParams
+  const mentorOpen = params?.mentorOpen === 'true'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -42,7 +48,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <QuestStoreInitializer quests={initialQuests} />
-      <QuestDashboard activeProjectId={activeProjectId} />
+      <QuestDashboard activeProjectId={activeProjectId} mentorOpen={mentorOpen} />
     </main>
   )
 }

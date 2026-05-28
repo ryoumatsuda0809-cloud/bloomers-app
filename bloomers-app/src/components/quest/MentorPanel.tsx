@@ -11,6 +11,7 @@ import {
 import {
   getMentorContext,
   generateMentorSystemPrompt,
+  generateIdeaMentorSystemPrompt,
   sendMentorMessage,
   generateStuckOptions,
 } from '@/app/actions/mentor-panel'
@@ -24,12 +25,19 @@ type Message = {
 interface MentorPanelProps {
   questId: string
   questTitle: string
-  stepTitle: string
+  stepTitle?: string
   projectId: string
+  mode?: 'idea' | 'quest'
+  initialOpen?: boolean
 }
 
 const FALLBACK_SYSTEM_PROMPT = `あなたはBloomerのメンターです。
 ユーザーが詰まっている時に、技術用語を使わず友達のような口調で助けてください。
+1回の返答は3文以内。答えから直接書き始めてください。`
+
+const FALLBACK_IDEA_SYSTEM_PROMPT = `あなたはBloomerのアイデアメンターです。
+ユーザーが作りたいアプリのアイデアを一緒に育てます。
+技術用語を使わず友達のような口調で話してください。
 1回の返答は3文以内。答えから直接書き始めてください。`
 
 export default function MentorPanel({
@@ -37,6 +45,8 @@ export default function MentorPanel({
   questTitle,
   stepTitle,
   projectId,
+  mode = 'quest',
+  initialOpen = false,
 }: MentorPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -45,31 +55,36 @@ export default function MentorPanel({
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // キャッシュキー：questId + projectId（プロジェクト変更で自動無効化）
   useEffect(() => {
-    const cacheKey = `bloomer_mentor_${questId}_${projectId}`
+    const cacheKey = `bloomer_mentor_${questId}_${projectId}_${mode}`
 
     const init = async () => {
       const cached = localStorage.getItem(cacheKey)
-      if (cached) {
-        setSystemPrompt(cached)
-        return
-      }
+      if (cached) { setSystemPrompt(cached); return }
 
-      const context = await getMentorContext(projectId, questTitle, stepTitle)
-      const { prompt, error } = await generateMentorSystemPrompt(questTitle, context)
-
-      if (prompt && !error) {
-        localStorage.setItem(cacheKey, prompt)
-        setSystemPrompt(prompt)
+      if (mode === 'idea') {
+        const { prompt, error } = await generateIdeaMentorSystemPrompt(questTitle)
+        if (prompt && !error) {
+          localStorage.setItem(cacheKey, prompt)
+          setSystemPrompt(prompt)
+        } else {
+          setSystemPrompt(FALLBACK_IDEA_SYSTEM_PROMPT)
+        }
       } else {
-        setSystemPrompt(FALLBACK_SYSTEM_PROMPT)
+        const context = await getMentorContext(projectId, questTitle, stepTitle ?? '')
+        const { prompt, error } = await generateMentorSystemPrompt(questTitle, context)
+        if (prompt && !error) {
+          localStorage.setItem(cacheKey, prompt)
+          setSystemPrompt(prompt)
+        } else {
+          setSystemPrompt(FALLBACK_SYSTEM_PROMPT)
+        }
       }
     }
 
     init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questId, projectId])
+  }, [questId, projectId, mode])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -84,7 +99,7 @@ export default function MentorPanel({
       { role: 'assistant', content: 'ここで詰まってますか？どのあたりが難しいか教えてください。' },
     ])
 
-    const { options } = await generateStuckOptions(stepTitle, questTitle)
+    const { options } = await generateStuckOptions(stepTitle ?? '', questTitle)
     if (options) {
       setMessages((prev) => {
         const updated = [...prev]
@@ -241,7 +256,7 @@ export default function MentorPanel({
 
       {/* モバイル・タブレット（xl未満）：Shadcn Sheet */}
       <div className="xl:hidden fixed bottom-4 right-4 z-50">
-        <Sheet>
+        <Sheet defaultOpen={initialOpen}>
           <SheetTrigger asChild>
             <button
               className="bg-primary text-primary-foreground p-3.5 rounded-full shadow-lg hover:bg-primary/90 transition"

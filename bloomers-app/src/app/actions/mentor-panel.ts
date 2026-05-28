@@ -201,3 +201,42 @@ JSON形式のみで返すこと（前置き不要）：
     }
   }
 }
+
+export async function generateIdeaMentorSystemPrompt(
+  questTitle: string
+): Promise<{ prompt?: string; error?: string }> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return { error: 'API key missing' }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `あなたはBloomerのアイデアメンターです。
+ユーザーは「${questTitle}」というプロジェクトに取り組み始めたところです。
+以下の役割を担うシステムプロンプトを生成してください：
+- ユーザーのアイデアをさらに深掘りして育てる
+- 「誰のために」「何を解決するか」「どうやって実現するか」を一緒に考える
+- ユーザーに「わくわく」を感じさせる
+- 技術用語を使わず友達のような口調
+- 1回の返答は3文以内
+- 同じ質問を繰り返さない
+出力はシステムプロンプトの文章のみ（前置き不要）：`
+            }]
+          }],
+        }),
+      }
+    )
+    if (!response.ok) return { error: `Gemini error: ${response.status}` }
+    const data = await response.json()
+    const prompt = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    return { prompt }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'generation failed' }
+  }
+}
