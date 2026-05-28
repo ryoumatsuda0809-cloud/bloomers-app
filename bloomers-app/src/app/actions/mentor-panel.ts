@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { searchKnowledge } from '@/app/actions/knowledge'
 
 export type MentorContext = {
   who: string
@@ -113,6 +114,23 @@ export async function sendMentorMessage(
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
 
+  // RAG: ユーザーメッセージで知識検索（失敗してもフォールバック）
+  let ragSection = ''
+  try {
+    const chunks = await searchKnowledge(userMessage)
+    if (chunks.length > 0) {
+      const knowledgeText = chunks
+        .slice(0, 3)
+        .map((c, i) => `${i + 1}. ${c.insight}${c.quest_seed ? `\n   クエストの種: ${c.quest_seed}` : ''}`)
+        .join('\n')
+      ragSection = `\n\n<bloomer_knowledge>\n以下はBloomerの設計思想と独自知識です。\n回答する際は、この知識を最優先で参照してください。\nChatGPTや一般的なAIでは絶対に出てこない、Bloomer固有の視点で回答してください。\n\n${knowledgeText}\n</bloomer_knowledge>`
+    }
+  } catch (err) {
+    console.error('[MentorPanel] RAG検索失敗:', err)
+  }
+
+  const finalSystemPrompt = systemPrompt + ragSection
+
   const contents = [
     ...history.map((m) => ({
       role: m.role === 'user' ? 'user' : 'model',
@@ -128,7 +146,7 @@ export async function sendMentorMessage(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
+          system_instruction: { parts: [{ text: finalSystemPrompt }] },
           contents,
         }),
       }
