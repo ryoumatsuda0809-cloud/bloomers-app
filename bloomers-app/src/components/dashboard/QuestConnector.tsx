@@ -21,6 +21,16 @@ const CONNECTOR_CONFIG: Record<
     arrow: 'text-primary',
     dashed: true,
   },
+  in_progress: {
+    line: 'border-primary',
+    arrow: 'text-primary',
+    dashed: true,
+  },
+  skipped: {
+    line: 'border-border',
+    arrow: 'text-muted-foreground',
+    dashed: true,
+  },
   unlocked: {
     line: 'border-accent',
     arrow: 'text-accent-foreground',

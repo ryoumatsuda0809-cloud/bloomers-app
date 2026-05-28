@@ -24,7 +24,9 @@ type QuestDashboardProps = {
 export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDashboardProps) {
   const router = useRouter()
   const quests = useQuestStore((state) => state.quests)
+  const startQuest = useQuestStore((state) => state.startQuest)
   const completeQuest = useQuestStore((state) => state.completeQuest)
+  const skipQuest = useQuestStore((state) => state.skipQuest)
   const setQuests = useQuestStore((state) => state.setQuests)
   const resetStore = useQuestStore((state) => state.resetStore)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -59,11 +61,33 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
   const progressPct = quests.length > 0 ? Math.round((completedCount / quests.length) * 100) : 0
   const allCompleted = quests.length > 0 && completedCount === quests.length
 
+  const handleStart = async (id: string) => {
+    const snapshot = useQuestStore.getState().quests
+    startQuest(id)
+    const { error } = await updateQuestStatus(id, 'in_progress', activeProjectId)
+    if (error) {
+      setQuests(snapshot)
+      return
+    }
+    router.refresh()
+  }
+
   const handleComplete = async (id: string) => {
     const snapshot = useQuestStore.getState().quests
     completeQuest(id)
     const { error } = await updateQuestStatus(id, 'completed', activeProjectId)
     if (error) setQuests(snapshot)
+    router.refresh()
+  }
+
+  const handleSkip = async (id: string) => {
+    const snapshot = useQuestStore.getState().quests
+    skipQuest(id)
+    const { error } = await updateQuestStatus(id, 'skipped', activeProjectId)
+    if (error) {
+      setQuests(snapshot)
+      return
+    }
     router.refresh()
   }
 
@@ -195,10 +219,12 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
                   description={quest.description}
                   status={quest.status}
                   onComplete={handleComplete}
+                  onStart={handleStart}
+                  onSkip={handleSkip}
                   onGitHubSave={handleGitHubSave}
                   gitHubSaveStatus={gitHubSaveStatus}
                   gitHubRepoUrl={gitHubRepoUrl}
-                  href={quest.status === 'active' ? `/quest/${quest.id}` : undefined}
+                  href={(quest.status === 'active' || quest.status === 'in_progress') ? `/quest/${quest.id}` : undefined}
                 />
                 {index < quests.length - 1 && <QuestConnector fromStatus={quest.status} />}
               </div>

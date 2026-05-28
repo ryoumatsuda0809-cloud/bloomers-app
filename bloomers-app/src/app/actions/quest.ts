@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function updateQuestStatus(
   questId: string,
-  status: 'in_progress' | 'completed',
+  status: 'in_progress' | 'completed' | 'skipped',
   projectId: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -25,7 +25,7 @@ export async function updateQuestStatus(
       quest_id: questId,
       status,
       project_id: projectId,
-      completed_at: status === 'completed' ? new Date().toISOString() : null,
+      completed_at: (status === 'completed' || status === 'skipped') ? new Date().toISOString() : null,
     },
     { onConflict: 'user_id,quest_id,project_id' }
   )

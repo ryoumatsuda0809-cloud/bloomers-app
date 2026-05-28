@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { CheckCircle2, Circle, Lock, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Circle, Lock, Sparkles, SkipForward } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,8 @@ interface QuestCardProps {
   description: string;
   status: QuestStatus;
   onComplete: (id: string) => Promise<void>;
+  onStart?: (id: string) => Promise<void>;
+  onSkip?: (id: string) => Promise<void>;
   onGitHubSave?: () => Promise<void>;
   gitHubSaveStatus?: 'idle' | 'loading' | 'success' | 'error';
   gitHubRepoUrl?: string;
@@ -33,11 +35,13 @@ const STATUS_CONFIG = {
     badgeLabel: "進行中",
     icon: <Sparkles className="size-4 text-primary shrink-0" />,
     ring: "ring-2 ring-primary shadow-md",
-    prompt: "text-primary",
-    promptPrefix: "$ ",
-    buttonClass: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-md h-9 text-sm font-semibold",
-    buttonLabel: "クエストを完了する",
-    disabled: false,
+  },
+  in_progress: {
+    bar: "bg-primary",
+    badge: "bg-primary/20 text-primary",
+    badgeLabel: "取り組み中",
+    icon: <Sparkles className="size-4 text-primary shrink-0 animate-pulse" />,
+    ring: "ring-2 ring-primary shadow-md",
   },
   completed: {
     bar: "bg-accent",
@@ -45,11 +49,13 @@ const STATUS_CONFIG = {
     badgeLabel: "完了",
     icon: <CheckCircle2 className="size-4 text-primary shrink-0" />,
     ring: "opacity-70",
-    prompt: "text-muted-foreground",
-    promptPrefix: "✓ ",
-    buttonClass: "bg-accent/30 text-accent-foreground rounded-md h-9 text-sm font-semibold cursor-default",
-    buttonLabel: "完了済み",
-    disabled: true,
+  },
+  skipped: {
+    bar: "bg-muted",
+    badge: "bg-muted text-muted-foreground",
+    badgeLabel: "スキップ済み",
+    icon: <SkipForward className="size-4 text-muted-foreground shrink-0" />,
+    ring: "opacity-60",
   },
   unlocked: {
     bar: "bg-accent/60",
@@ -57,11 +63,6 @@ const STATUS_CONFIG = {
     badgeLabel: "解放済み",
     icon: <Circle className="size-4 text-primary/70 shrink-0" />,
     ring: "",
-    prompt: "text-muted-foreground",
-    promptPrefix: "$ ",
-    buttonClass: "bg-accent/30 text-accent-foreground rounded-md h-9 text-sm font-semibold",
-    buttonLabel: "完了する",
-    disabled: true,
   },
   locked: {
     bar: "bg-muted",
@@ -69,11 +70,6 @@ const STATUS_CONFIG = {
     badgeLabel: "ロック中",
     icon: <Lock className="size-4 text-muted-foreground shrink-0" />,
     ring: "opacity-50",
-    prompt: "text-muted-foreground",
-    promptPrefix: "# ",
-    buttonClass: "bg-muted text-muted-foreground rounded-md h-9 text-sm font-semibold cursor-not-allowed",
-    buttonLabel: "ロック中",
-    disabled: true,
   },
 } as const;
 
@@ -83,22 +79,21 @@ export default function QuestCard({
   description,
   status,
   onComplete,
+  onStart,
+  onSkip,
   onGitHubSave,
   gitHubSaveStatus = 'idle',
   gitHubRepoUrl = '',
   href,
 }: QuestCardProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const config = STATUS_CONFIG[status];
 
-  const handleClick = async () => {
-    if (config.disabled || isSubmitting) return;
+  const withSubmit = async (fn: () => Promise<void>) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
-    try {
-      await onComplete(id);
-    } finally {
-      setIsSubmitting(false);
-    }
+    try { await fn(); } finally { setIsSubmitting(false); }
   };
 
   return (
@@ -106,9 +101,7 @@ export default function QuestCard({
       className={`relative flex flex-col overflow-hidden rounded-xl transition-all duration-300 ${config.ring}`}
     >
       {/* アクセントバー */}
-      <div
-        className={`h-1.5 w-full ${config.bar} shrink-0`}
-      />
+      <div className={`h-1.5 w-full ${config.bar} shrink-0`} />
 
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -131,60 +124,100 @@ export default function QuestCard({
       </CardHeader>
 
       <CardFooter className="pt-0 flex flex-col gap-2">
-        {href && (
-          <Link
-            href={href}
-            className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center"
+        {/* active: 「クエストを進める」ボタン — onStart → in_progress 更新後に遷移 */}
+        {status === 'active' && href && (
+          <button
+            onClick={() => withSubmit(async () => {
+              if (onStart) await onStart(id);
+              router.push(href);
+            })}
+            disabled={isSubmitting}
+            className="w-full h-10 bg-card border border-primary/40 text-primary text-sm font-semibold rounded-xl hover:bg-accent/30 transition flex items-center justify-center disabled:opacity-50"
           >
-            クエストを進める
-          </Link>
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                準備中...
+              </span>
+            ) : 'クエストを進める'}
+          </button>
         )}
-        {href && id === 'q5' && (
-          <>
-            {gitHubSaveStatus === 'idle' && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onGitHubSave}
-                disabled={false}
-              >
-                プロジェクトを保存する
-              </Button>
+
+        {/* in_progress: 「完了する」＋「スキップする」 */}
+        {status === 'in_progress' && (
+          <div className="flex flex-col gap-2 w-full">
+            {href && id === 'q5' && (
+              <>
+                {gitHubSaveStatus === 'idle' && (
+                  <Button variant="outline" className="w-full" onClick={onGitHubSave}>
+                    プロジェクトを保存する
+                  </Button>
+                )}
+                {gitHubSaveStatus === 'loading' && (
+                  <Button variant="outline" className="w-full" disabled>保存中...</Button>
+                )}
+                {gitHubSaveStatus === 'success' && (
+                  <a href={gitHubRepoUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-primary underline text-center w-full">
+                    保存完了！確認する
+                  </a>
+                )}
+                {gitHubSaveStatus === 'error' && (
+                  <p className="text-destructive text-sm text-center w-full">
+                    保存に失敗しました。もう一度お試しください。
+                  </p>
+                )}
+              </>
             )}
-            {gitHubSaveStatus === 'loading' && (
-              <Button variant="outline" className="w-full" disabled>
-                保存中...
-              </Button>
-            )}
-            {gitHubSaveStatus === 'success' && (
-              <a
-                href={gitHubRepoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary underline text-center w-full"
-              >
-                保存完了！確認する
-              </a>
-            )}
-            {gitHubSaveStatus === 'error' && (
-              <p className="text-destructive text-sm text-center w-full">
-                保存に失敗しました。もう一度お試しください。
-              </p>
-            )}
-          </>
+            <Button
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md h-9 text-sm font-semibold"
+              disabled={isSubmitting}
+              onClick={() => withSubmit(() => onComplete(id))}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  処理中...
+                </span>
+              ) : 'クエストを完了する'}
+            </Button>
+            <button
+              onClick={() => withSubmit(async () => { if (onSkip) await onSkip(id); })}
+              disabled={isSubmitting}
+              className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 transition disabled:opacity-50"
+            >
+              スキップする
+            </button>
+          </div>
         )}
-        <Button
-          className={`w-full ${config.buttonClass}`}
-          disabled={config.disabled || isSubmitting}
-          onClick={handleClick}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              処理中...
-            </span>
-          ) : config.buttonLabel}
-        </Button>
+
+        {/* completed: 完了済み表示のみ */}
+        {status === 'completed' && (
+          <span className="w-full text-center text-xs bg-accent/30 text-accent-foreground px-2 py-2 rounded-md">
+            完了済み ✓
+          </span>
+        )}
+
+        {/* skipped: スキップ済みバッジ */}
+        {status === 'skipped' && (
+          <span className="w-full text-center text-xs bg-muted text-muted-foreground px-2 py-2 rounded-md">
+            スキップ済み
+          </span>
+        )}
+
+        {/* unlocked: まだロック解除済みだが未着手（クリック不可） */}
+        {status === 'unlocked' && (
+          <span className="w-full text-center text-xs bg-accent/20 text-muted-foreground px-2 py-2 rounded-md">
+            前のクエストを完了すると開始できます
+          </span>
+        )}
+
+        {/* locked */}
+        {status === 'locked' && (
+          <span className="w-full text-center text-xs bg-muted text-muted-foreground px-2 py-2 rounded-md">
+            ロック中
+          </span>
+        )}
       </CardFooter>
     </Card>
   );

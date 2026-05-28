@@ -73,7 +73,7 @@ export const STATIC_QUEST_DEFINITIONS = [
   { id: 'q5', title: '本番公開',             description: 'Vercelへデプロイ',         order: 5, dependsOn: ['q4'] },
 ]
 
-type DbQuestStatus = 'not_started' | 'in_progress' | 'completed'
+type DbQuestStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped'
 
 /**
  * DBのquest_progressレコードとstatic定義を結合し、UIステータス付きのQuestを返す。
@@ -94,7 +94,10 @@ export function mergeQuestsWithProgress(
 
   const completedIds = new Set(
     definitions
-      .filter((q) => (progressMap[q.id] ?? 'not_started') === 'completed')
+      .filter((q) => {
+        const s = progressMap[q.id] ?? 'not_started'
+        return s === 'completed' || s === 'skipped'
+      })
       .map((q) => q.id)
   )
 
@@ -108,8 +111,11 @@ export function mergeQuestsWithProgress(
       if (dbStatus === 'completed') {
         return { ...def, status: 'completed' as QuestStatus }
       }
+      if (dbStatus === 'skipped') {
+        return { ...def, status: 'skipped' as QuestStatus }
+      }
       if (dbStatus === 'in_progress') {
-        return { ...def, status: 'active' as QuestStatus }
+        return { ...def, status: 'in_progress' as QuestStatus }
       }
 
       const isUnlocked = def.dependsOn.every((depId) => completedIds.has(depId))
