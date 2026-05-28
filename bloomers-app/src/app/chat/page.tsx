@@ -461,12 +461,21 @@ function ChatContent() {
             もっと深掘りする
           </AlertDialogAction>
           <AlertDialogAction
-            onClick={() => {
+            onClick={async () => {
               setShowIdeaChoiceDialog(false)
               const idea = selectedIdeaIndex !== null ? top5Ideas[selectedIdeaIndex] : ''
               setTop5Ideas([])
               setSelectedIdeaIndex(null)
-              handleSend(`「${idea}」でクエストを作ってください。`)
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `generating-${Date.now()}`,
+                  role: 'assistant',
+                  content: `「${idea}」であなた専用のクエストを作っています...\n少々お待ちください 🌸`,
+                  createdAt: new Date().toISOString(),
+                },
+              ])
+              await handleSend(`「${idea}」でアプリを作ります。このアイデアを確定してクエストを生成してください。`)
             }}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
