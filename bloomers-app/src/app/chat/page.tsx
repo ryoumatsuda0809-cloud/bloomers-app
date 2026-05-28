@@ -447,7 +447,7 @@ function ChatContent() {
               : 'アイデアが選ばれました。'}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2">
+        <AlertDialogFooter className="flex-col gap-3 sm:flex-col">
           <AlertDialogAction
             onClick={() => {
               setShowIdeaChoiceDialog(false)
@@ -456,9 +456,10 @@ function ChatContent() {
               setSelectedIdeaIndex(null)
               handleSend(`${idea}についてもっと深掘りしたいです。`)
             }}
-            className="w-full bg-card border border-border text-foreground hover:bg-muted"
+            className="w-full h-auto py-4 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex flex-col gap-1"
           >
-            もっと深掘りする
+            <span className="font-semibold text-sm">🔍 深掘りする</span>
+            <span className="text-xs text-muted-foreground font-normal">もっと詳しく考える</span>
           </AlertDialogAction>
           <AlertDialogAction
             onClick={async () => {
@@ -485,9 +486,10 @@ function ChatContent() {
               await saveOnboardingData(personality, ideaCard, [ideaCard])
               router.push('/?mentorOpen=true')
             }}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full h-auto py-4 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-left flex flex-col gap-1"
           >
-            このまま実装へ
+            <span className="font-semibold text-sm">🚀 このまま実装へ</span>
+            <span className="text-xs text-primary-foreground/70 font-normal">すぐクエストを作る</span>
           </AlertDialogAction>
           <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
         </AlertDialogFooter>
