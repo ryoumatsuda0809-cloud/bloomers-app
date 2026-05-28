@@ -7,7 +7,7 @@ import {
   sendMessage,
   clearChatHistory,
 } from '@/app/actions/chat'
-import { skipOnboarding, saveOnboardingData } from '@/app/actions/onboarding'
+import { skipOnboarding, saveOnboardingData, generateIdeaCardFromText } from '@/app/actions/onboarding'
 import type { ChatMessage, QuestContext } from '@/app/actions/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react'
@@ -477,13 +477,20 @@ function ChatContent() {
                 },
               ])
               const personality = { timeUsage: '', mbti: '', localPain: idea }
-              const ideaCard = {
-                title: idea,
-                description: idea,
-                questTitles: ['q1', 'q2', 'q3', 'q4', 'q5'],
-                questDescriptions: ['説明1', '説明2', '説明3', '説明4', '説明5'],
+              const ideaCard = await generateIdeaCardFromText(idea)
+              const result = await saveOnboardingData(personality, ideaCard, [ideaCard])
+              if (result.error) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `error-${Date.now()}`,
+                    role: 'assistant',
+                    content: 'クエストの作成に失敗しました。もう一度試してください。',
+                    createdAt: new Date().toISOString(),
+                  },
+                ])
+                return
               }
-              await saveOnboardingData(personality, ideaCard, [ideaCard])
               router.push('/?mentorOpen=true')
             }}
             className="w-full h-auto py-4 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-left flex flex-col gap-1"

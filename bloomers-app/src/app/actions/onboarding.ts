@@ -306,3 +306,87 @@ export async function skipOnboarding(): Promise<{ success?: boolean; error?: str
   if (error) return { error: 'スキップに失敗しました。' }
   return { success: true }
 }
+
+// アイデア文字列から実名クエスト付きIdeaCardをGeminiで生成する。
+// 失敗時は questTitles/questDescriptions を空配列にして
+// mergeQuestsWithProgress が STATIC定義の実名にフォールバックするようにする。
+export async function generateIdeaCardFromText(
+  ideaText: string
+): Promise<IdeaCard> {
+  const apiKey = process.env.GEMINI_API_KEY
+
+  const fallback: IdeaCard = {
+    title: ideaText.slice(0, 20),
+    description: ideaText.slice(0, 40),
+    questTitles: [],
+    questDescriptions: [],
+  }
+
+  if (!apiKey) return fallback
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `以下のアプリのアイデアから、初心者向けの開発ロードマップ情報をJSON生成してください。
+
+アイデア：${ideaText}
+
+ルール：
+- title: アプリ名（20文字以内）
+- description: どんなアプリか（40文字以内）
+- questTitles: 5つのクエスト名。必ずこの技術的順序にする：
+  1番目=開発環境の構築、2番目=画面/UI作成、3番目=データ保存(DB)、4番目=ログイン機能、5番目=公開
+  各クエスト名にこのアプリの特徴を必ず反映させること
+  （例「レシピアプリ」なら「レシピアプリの開発環境を整えよう」「レシピを表示する画面を作ろう」）
+- questDescriptions: 各クエストで何を達成するかの説明（各40文字以内）
+
+JSON形式のみで出力（前置き・コードブロック記号なし）：
+{
+  "title": "...",
+  "description": "...",
+  "questTitles": ["...", "...", "...", "...", "..."],
+  "questDescriptions": ["...", "...", "...", "...", "..."]
+}`
+            }]
+          }],
+        }),
+      }
+    )
+
+    if (!response.ok) return fallback
+    const data = await response.json()
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    const clean = text.replace(/```json|```/g, '').trim()
+    const parsed: unknown = JSON.parse(clean)
+
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'title' in parsed &&
+      'questTitles' in parsed &&
+      'questDescriptions' in parsed &&
+      typeof (parsed as Record<string, unknown>).title === 'string' &&
+      Array.isArray((parsed as Record<string, unknown>).questTitles) &&
+      ((parsed as Record<string, unknown>).questTitles as unknown[]).length === 5 &&
+      Array.isArray((parsed as Record<string, unknown>).questDescriptions) &&
+      ((parsed as Record<string, unknown>).questDescriptions as unknown[]).length === 5
+    ) {
+      const p = parsed as Record<string, unknown>
+      return {
+        title: (p.title as string).slice(0, 20),
+        description: typeof p.description === 'string' ? (p.description as string).slice(0, 40) : ideaText.slice(0, 40),
+        questTitles: p.questTitles as string[],
+        questDescriptions: p.questDescriptions as string[],
+      }
+    }
+    return fallback
+  } catch {
+    return fallback
+  }
+}
