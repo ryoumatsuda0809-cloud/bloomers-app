@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, MessageCircle, Copy, Check, Terminal } from 'lucide-react'
 import { QUEST_CONFIG } from '@/lib/quest-utils'
 
 type CopyState = 'idle' | 'copied'
 
-export default function AISelectPage() {
+function AISelectContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -200,5 +200,17 @@ export default function AISelectPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AISelectPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    }>
+      <AISelectContent />
+    </Suspense>
   )
 }
