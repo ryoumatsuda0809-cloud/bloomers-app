@@ -7,7 +7,7 @@ import {
   sendMessage,
   clearChatHistory,
 } from '@/app/actions/chat'
-import { skipOnboarding } from '@/app/actions/onboarding'
+import { skipOnboarding, saveOnboardingData } from '@/app/actions/onboarding'
 import type { ChatMessage, QuestContext } from '@/app/actions/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react'
@@ -475,7 +475,15 @@ function ChatContent() {
                   createdAt: new Date().toISOString(),
                 },
               ])
-              await handleSend(`「${idea}」でアプリを作ります。このアイデアを確定してクエストを生成してください。`)
+              const personality = { timeUsage: '', mbti: '', localPain: idea }
+              const ideaCard = {
+                title: idea,
+                description: idea,
+                questTitles: ['q1', 'q2', 'q3', 'q4', 'q5'],
+                questDescriptions: ['説明1', '説明2', '説明3', '説明4', '説明5'],
+              }
+              await saveOnboardingData(personality, ideaCard, [ideaCard])
+              router.push('/?mentorOpen=true')
             }}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
