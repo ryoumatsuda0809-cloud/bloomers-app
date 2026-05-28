@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { ArrowUp, LifeBuoy, MessageCircle } from 'lucide-react'
 import {
   Sheet,
@@ -48,12 +49,24 @@ export default function MentorPanel({
   mode = 'quest',
   initialOpen = false,
 }: MentorPanelProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [sheetOpen, setSheetOpen] = useState(initialOpen)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // initialOpen=true なら1回だけSheetを開き、URLから ?mentorOpen=true を除去する
+  useEffect(() => {
+    if (initialOpen) {
+      setSheetOpen(true)
+      router.replace(pathname)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const cacheKey = `bloomer_mentor_${questId}_${projectId}_${mode}`
@@ -256,7 +269,7 @@ export default function MentorPanel({
 
       {/* モバイル・タブレット（xl未満）：Shadcn Sheet */}
       <div className="xl:hidden fixed bottom-4 right-4 z-50">
-        <Sheet defaultOpen={initialOpen}>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
               className="bg-primary text-primary-foreground p-3.5 rounded-full shadow-lg hover:bg-primary/90 transition"
