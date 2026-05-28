@@ -15,12 +15,23 @@ export type SetupStep = {
   userAnswer?: string
 }
 
+type QuestContext = {
+  who: string
+  what: string
+  how: string
+}
+
 export async function generateSetupSteps(
   ideaTitle: string,
-  ideaDescription: string
+  ideaDescription: string,
+  context?: QuestContext
 ): Promise<SetupStep[]> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return getDefaultSetupSteps()
+
+  const contextString = context
+    ? `\n【プロジェクトの前提条件】\n- 誰のために: ${context.who}\n- 何を解決する: ${context.what}\n- どうやって: ${context.how}\nこの前提条件を必ず考慮してセットアップ手順を生成してください。`
+    : ''
 
   try {
     const response = await fetch(
@@ -36,7 +47,7 @@ export async function generateSetupSteps(
 
 【アプリ情報】
 - タイトル: ${ideaTitle}
-- 概要: ${ideaDescription}
+- 概要: ${ideaDescription}${contextString}
 
 【ルール】
 - 初心者向けに4〜6ステップで構成すること
@@ -114,10 +125,15 @@ function getDefaultSetupSteps(): SetupStep[] {
 export async function generateQuestSteps(
   questNumber: 2 | 3 | 4 | 5,
   ideaTitle: string,
-  ideaDescription: string
+  ideaDescription: string,
+  context?: QuestContext
 ): Promise<SetupStep[]> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return getDefaultQuestSteps(questNumber)
+
+  const contextString = context
+    ? `\n【プロジェクトの前提条件】\n- 誰のために: ${context.who}\n- 何を解決する: ${context.what}\n- どうやって: ${context.how}\nこの前提条件を必ず考慮してステップを生成してください。`
+    : ''
 
   const questThemes = {
     2: '最初の画面を作る（UI構築）。AIが提案した3つのデザイン案から選ぶだけで画面が完成し、仮公開URLで友達に見せられるようにする。',
@@ -140,7 +156,7 @@ export async function generateQuestSteps(
 
 【アプリ情報】
 - タイトル: ${ideaTitle}
-- 概要: ${ideaDescription}
+- 概要: ${ideaDescription}${contextString}
 
 【クエスト${questNumber}のテーマ】
 ${questThemes[questNumber]}

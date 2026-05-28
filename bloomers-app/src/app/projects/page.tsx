@@ -3,14 +3,27 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, ArrowRight, Sprout, Pin, PinOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea } from '@/app/actions/projects'
+import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea, pauseProject } from '@/app/actions/projects'
 import type { ProjectIdea } from '@/app/actions/projects'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function ProjectsPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showNewIdeaDialog, setShowNewIdeaDialog] = useState(false)
+
+  const activeProject = projects.find((p) => p.isActive)
 
   useEffect(() => {
     getProjectIdeas().then((data) => {
@@ -73,7 +86,13 @@ export default function ProjectsPage() {
         <div className="flex items-center justify-between">
           <h1 className="font-heading text-2xl font-bold text-foreground">マイプロジェクト</h1>
           <button
-            onClick={() => router.push('/chat')}
+            onClick={() => {
+              if (activeProject) {
+                setShowNewIdeaDialog(true)
+              } else {
+                router.push('/onboarding')
+              }
+            }}
             className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-full hover:bg-primary/90 transition"
           >
             ＋ 新しいアイデア
@@ -88,10 +107,10 @@ export default function ProjectsPage() {
               メンターと話してアイデアを見つけよう
             </p>
             <button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push('/onboarding')}
               className="mt-2 text-sm text-primary hover:underline inline-flex items-center gap-1"
             >
-              メンターと話す <ArrowRight className="size-4" />
+              アイデアを見つける <ArrowRight className="size-4" />
             </button>
           </div>
         ) : (
@@ -142,6 +161,16 @@ export default function ProjectsPage() {
                         {project.isPinned && (
                           <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">
                             ピン済み
+                          </span>
+                        )}
+                        {project.status === 'paused' && (
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            途中
+                          </span>
+                        )}
+                        {project.status === 'completed' && (
+                          <span className="text-xs bg-accent/40 text-accent-foreground px-2 py-0.5 rounded-full">
+                            完了
                           </span>
                         )}
                       </div>
@@ -200,6 +229,49 @@ export default function ProjectsPage() {
         )}
 
       </div>
+
+      <AlertDialog open={showNewIdeaDialog} onOpenChange={setShowNewIdeaDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              現在進行中のプロジェクトはどうしますか？
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              「{activeProject?.title}」が進行中です。
+              新しいアイデアを始める前に、現在の進捗を保存するか選んでください。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-col gap-2">
+            <AlertDialogAction
+              onClick={async () => {
+                if (activeProject) {
+                  await pauseProject(activeProject.id)
+                }
+                router.refresh()
+                router.push('/onboarding')
+              }}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              途中として保存して新しく始める
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={async () => {
+                if (activeProject) {
+                  await deleteProjectIdea(activeProject.id)
+                }
+                router.refresh()
+                router.push('/onboarding')
+              }}
+              className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              削除して新しく始める
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full">
+              キャンセル
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

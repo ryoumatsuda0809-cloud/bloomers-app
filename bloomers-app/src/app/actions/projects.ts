@@ -11,6 +11,7 @@ export type ProjectIdea = {
   ideaCard: IdeaCard
   isActive: boolean
   isPinned: boolean
+  status: string
   createdAt: string
 }
 
@@ -57,6 +58,7 @@ export async function getProjectIdeas(): Promise<ProjectIdea[]> {
     ideaCard: row.idea_card,
     isActive: row.is_active,
     isPinned: row.is_pinned ?? false,
+    status: row.status ?? 'active',
     createdAt: row.created_at,
   }))
 }
@@ -115,6 +117,23 @@ export async function pinProjectIdea(
     .eq('user_id', user.id)
 
   if (error) return { error: 'ピン留めに失敗しました。' }
+  return { success: true }
+}
+
+export async function pauseProject(
+  projectId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('project_ideas')
+    .update({ status: 'paused', is_active: false })
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: '中断の保存に失敗しました。' }
   return { success: true }
 }
 

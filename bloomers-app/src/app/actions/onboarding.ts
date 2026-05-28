@@ -203,10 +203,17 @@ export async function saveOnboardingData(
     .limit(1)
     .single()
 
+  const questContext = {
+    who: selectedIdea.questDescriptions?.[0] ?? '（未設定）',
+    what: personality.localPain ?? '（未設定）',
+    how: selectedIdea.description ?? '（未設定）',
+  }
+
   if (newProject) {
     const steps = await generateSetupSteps(
       selectedIdea.title,
-      selectedIdea.description
+      selectedIdea.description,
+      questContext
     )
     await supabase
       .from('project_ideas')
@@ -216,10 +223,10 @@ export async function saveOnboardingData(
 
   // q2〜q5のステップも生成して保存
   const [q2Steps, q3Steps, q4Steps, q5Steps] = await Promise.all([
-    generateQuestSteps(2, selectedIdea.title, selectedIdea.description),
-    generateQuestSteps(3, selectedIdea.title, selectedIdea.description),
-    generateQuestSteps(4, selectedIdea.title, selectedIdea.description),
-    generateQuestSteps(5, selectedIdea.title, selectedIdea.description),
+    generateQuestSteps(2, selectedIdea.title, selectedIdea.description, questContext),
+    generateQuestSteps(3, selectedIdea.title, selectedIdea.description, questContext),
+    generateQuestSteps(4, selectedIdea.title, selectedIdea.description, questContext),
+    generateQuestSteps(5, selectedIdea.title, selectedIdea.description, questContext),
   ])
 
   if (newProject) {
