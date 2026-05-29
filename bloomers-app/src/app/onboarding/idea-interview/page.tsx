@@ -345,7 +345,7 @@ export default function IdeaInterviewPage() {
             アイデアの整理ができました。次のステップを選んでください。
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2">
+        <AlertDialogFooter className="flex-col gap-3 sm:flex-col">
           <AlertDialogAction
             onClick={() => {
               setShowChoiceDialog(false)
@@ -358,9 +358,10 @@ export default function IdeaInterviewPage() {
                 },
               ])
             }}
-            className="w-full bg-card border border-border text-foreground hover:bg-muted"
+            className="w-full h-auto py-4 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex flex-col gap-1"
           >
-            深掘りする（4つの質問で徹底整理）
+            <span className="font-semibold text-sm">🔍 深掘りする</span>
+            <span className="text-xs text-muted-foreground font-normal">4つの質問でじっくり整理</span>
           </AlertDialogAction>
           <AlertDialogAction
             onClick={async () => {
@@ -368,9 +369,10 @@ export default function IdeaInterviewPage() {
               const success = await handleFinalize()
               if (success) router.push('/?mentorOpen=true')
             }}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full h-auto py-4 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-left flex flex-col gap-1"
           >
-            パパっと整理して実装へ
+            <span className="font-semibold text-sm">🚀 パパっと整理して実装へ</span>
+            <span className="text-xs text-primary-foreground/70 font-normal">すぐにクエストを作る</span>
           </AlertDialogAction>
           <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
         </AlertDialogFooter>
