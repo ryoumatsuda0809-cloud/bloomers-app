@@ -85,6 +85,14 @@ export async function setActiveProject(
 
   if (error) return { error: 'プロジェクトの切り替えに失敗しました。' }
 
+  // paused を active に戻す（completed は維持）
+  await supabase
+    .from('project_ideas')
+    .update({ status: 'active' })
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .neq('status', 'completed')
+
   // profilesのselected_ideaも更新
   const { data } = await supabase
     .from('project_ideas')
