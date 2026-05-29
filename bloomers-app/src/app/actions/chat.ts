@@ -38,6 +38,7 @@ export async function getChatHistory(): Promise<ChatMessage[]> {
     .select('*')
     .eq('user_id', user.id)
     .eq('project_id', projectId)
+    .is('quest_id', null)
     .order('created_at', { ascending: true })
 
   return (data ?? []).map((row) => ({
@@ -150,6 +151,7 @@ export async function sendMessage(
     role: 'user',
     content: userMessage,
     project_id: projectId,
+    quest_id: null,
   })
 
   const knowledgeChunks = await searchKnowledge(userMessage)
@@ -289,6 +291,7 @@ Q: 大学生が開発で挫折する理由は？
       role: 'assistant',
       content: cleanReply,
       project_id: projectId,
+      quest_id: null,
     })
 
     return { reply: cleanReply, ideaGenerated }
@@ -317,4 +320,52 @@ export async function clearChatHistory(): Promise<void> {
     .delete()
     .eq('user_id', user.id)
     .eq('project_id', activeProject.id)
+}
+
+export async function getMentorHistory(
+  projectId: string,
+  questId: string
+): Promise<ChatMessage[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('project_id', projectId)
+    .eq('quest_id', questId)
+    .order('created_at', { ascending: true })
+
+  if (error) return []
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    role: row.role,
+    content: row.content,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function saveMentorMessage(
+  projectId: string,
+  questId: string,
+  role: 'user' | 'assistant',
+  content: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'no user' }
+
+  const { error } = await supabase.from('chat_messages').insert({
+    user_id: user.id,
+    project_id: projectId,
+    quest_id: questId,
+    role,
+    content,
+  })
+
+  if (error) return { error: error.message }
+  return {}
 }

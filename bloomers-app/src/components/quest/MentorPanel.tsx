@@ -16,6 +16,7 @@ import {
   sendMentorMessage,
   generateStuckOptions,
 } from '@/app/actions/mentor-panel'
+import { getMentorHistory, saveMentorMessage } from '@/app/actions/chat'
 
 type Message = {
   role: 'user' | 'assistant'
@@ -103,6 +104,23 @@ export default function MentorPanel({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await getMentorHistory(projectId, questId)
+        if (history.length > 0) {
+          setMessages(
+            history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content }))
+          )
+        }
+      } catch {
+        // 読み込み失敗時は空のまま新規開始
+      }
+    }
+    loadHistory()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questId, projectId])
+
   const handleStuck = async () => {
     if (isLoading || isGeneratingOptions) return
     setIsGeneratingOptions(true)
@@ -131,20 +149,23 @@ export default function MentorPanel({
     setIsLoading(true)
     setMessages((prev) => [...prev, { role: 'user', content: text }])
 
+    saveMentorMessage(projectId, questId, 'user', text).catch(() => {})
+
     const prompt = systemPrompt || FALLBACK_SYSTEM_PROMPT
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
 
     const { reply, error } = await sendMentorMessage(text, history, prompt)
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content: error || !reply
-          ? 'メンターに接続できませんでした。もう一度試してみてください。'
-          : reply,
-      },
-    ])
+    const assistantContent = error || !reply
+      ? 'メンターに接続できませんでした。もう一度試してみてください。'
+      : reply
+
+    setMessages((prev) => [...prev, { role: 'assistant', content: assistantContent }])
+
+    if (!error && reply) {
+      saveMentorMessage(projectId, questId, 'assistant', reply).catch(() => {})
+    }
+
     setIsLoading(false)
   }
 
