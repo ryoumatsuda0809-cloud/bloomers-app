@@ -17,6 +17,7 @@ interface QuestState {
   startQuest: (id: string) => void
   completeQuest: (id: string) => void
   skipQuest: (id: string) => void
+  reopenQuest: (id: string) => void
   resetStore: () => void
 }
 
@@ -84,6 +85,26 @@ export const useQuestStore = create<QuestState>()((set) => ({
       }
     })
   },
+
+  reopenQuest: (id) =>
+    set((state) => {
+      const clearedIds = new Set(
+        state.quests
+          .filter((q) => q.id !== id && (q.status === 'completed' || q.status === 'skipped'))
+          .map((q) => q.id)
+      )
+      const hasActiveElsewhere = state.quests.some(
+        (q) => q.id !== id && q.status === 'active'
+      )
+      return {
+        quests: state.quests.map((q) => {
+          if (q.id !== id) return q
+          const isUnlocked = q.dependsOn.every((dep) => clearedIds.has(dep))
+          if (!isUnlocked) return { ...q, status: 'locked' as QuestStatus }
+          return { ...q, status: (hasActiveElsewhere ? 'unlocked' : 'active') as QuestStatus }
+        }),
+      }
+    }),
 
   resetStore: () => set({ quests: [] }),
 }))

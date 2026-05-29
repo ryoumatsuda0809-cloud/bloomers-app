@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function updateQuestStatus(
   questId: string,
-  status: 'in_progress' | 'completed' | 'skipped',
+  status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
   projectId: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient()

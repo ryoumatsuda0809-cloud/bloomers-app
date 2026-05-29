@@ -27,6 +27,7 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
   const startQuest = useQuestStore((state) => state.startQuest)
   const completeQuest = useQuestStore((state) => state.completeQuest)
   const skipQuest = useQuestStore((state) => state.skipQuest)
+  const reopenQuest = useQuestStore((state) => state.reopenQuest)
   const setQuests = useQuestStore((state) => state.setQuests)
   const resetStore = useQuestStore((state) => state.resetStore)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -84,6 +85,17 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
     const snapshot = useQuestStore.getState().quests
     skipQuest(id)
     const { error } = await updateQuestStatus(id, 'skipped', activeProjectId)
+    if (error) {
+      setQuests(snapshot)
+      return
+    }
+    router.refresh()
+  }
+
+  const handleReopen = async (id: string) => {
+    const snapshot = useQuestStore.getState().quests
+    reopenQuest(id)
+    const { error } = await updateQuestStatus(id, 'not_started', activeProjectId)
     if (error) {
       setQuests(snapshot)
       return
@@ -221,6 +233,7 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
                   onComplete={handleComplete}
                   onStart={handleStart}
                   onSkip={handleSkip}
+                  onReopen={handleReopen}
                   onGitHubSave={handleGitHubSave}
                   gitHubSaveStatus={gitHubSaveStatus}
                   gitHubRepoUrl={gitHubRepoUrl}

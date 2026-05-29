@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Lock, Sparkles, SkipForward } from "lucide-react";
+import { CheckCircle2, Circle, Lock, RotateCcw, Sparkles, SkipForward } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ interface QuestCardProps {
   onComplete: (id: string) => Promise<void>;
   onStart?: (id: string) => Promise<void>;
   onSkip?: (id: string) => Promise<void>;
+  onReopen?: (id: string) => Promise<void>;
   onGitHubSave?: () => Promise<void>;
   gitHubSaveStatus?: 'idle' | 'loading' | 'success' | 'error';
   gitHubRepoUrl?: string;
@@ -81,6 +82,7 @@ export default function QuestCard({
   onComplete,
   onStart,
   onSkip,
+  onReopen,
   onGitHubSave,
   gitHubSaveStatus = 'idle',
   gitHubRepoUrl = '',
@@ -198,11 +200,21 @@ export default function QuestCard({
           </span>
         )}
 
-        {/* skipped: スキップ済みバッジ */}
+        {/* skipped: スキップ済みバッジ + やり直しボタン */}
         {status === 'skipped' && (
-          <span className="w-full text-center text-xs bg-muted text-muted-foreground px-2 py-2 rounded-md">
-            スキップ済み
-          </span>
+          <div className="w-full flex items-center justify-between gap-2">
+            <span className="flex-1 text-center text-xs bg-muted text-muted-foreground px-2 py-2 rounded-md">
+              スキップ済み
+            </span>
+            <button
+              onClick={() => withSubmit(async () => { if (onReopen) await onReopen(id) })}
+              disabled={isSubmitting}
+              title="やり直す"
+              className="w-8 h-8 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition disabled:opacity-50 shrink-0"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
         )}
 
         {/* unlocked: まだロック解除済みだが未着手（クリック不可） */}
