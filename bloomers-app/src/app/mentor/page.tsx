@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal, Pencil, Pin, Trash2 } from 'lucide-react'
+import {
+  ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal,
+  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Wrench,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -22,16 +26,18 @@ import {
   renameConversation,
   pinConversation,
   deleteConversation,
+  updateConversationMode,
   type Conversation,
   type MentorMode,
+  type Attachment,
 } from '@/app/actions/mentor-chat'
 
 type UIMessage = { role: 'user' | 'assistant'; content: string }
 
-const MODE_LABELS: Record<MentorMode, { icon: string; label: string }> = {
-  idea: { icon: '🌱', label: 'アイデア出し' },
-  dev: { icon: '🔧', label: '問題解決' },
-  general: { icon: '💬', label: 'なんでも相談' },
+const MODE_LABELS: Record<MentorMode, { icon: LucideIcon; label: string }> = {
+  idea: { icon: Sprout, label: 'アイデア出し' },
+  dev: { icon: Wrench, label: '問題解決' },
+  general: { icon: MessageCircle, label: 'なんでも相談' },
 }
 
 export default function MentorPage() {
@@ -48,7 +54,12 @@ export default function MentorPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
+  const [showPlusMenu, setShowPlusMenu] = useState(false)
+  const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string } | null>(null)
+  const [attachError, setAttachError] = useState<string | null>(null)
+  const [showModeChangeDialog, setShowModeChangeDialog] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getConversations().then(setConversations).catch(() => {})
@@ -91,31 +102,38 @@ export default function MentorPage() {
 
   const handleSend = async () => {
     const text = input.trim()
-    if (!text || isLoading || !activeConvId) return
+    if ((!text && !attachment) || isLoading || !activeConvId) return
 
+    const currentAttachment = attachment
     setInput('')
+    setAttachment(null)
     setIsLoading(true)
-    setMessages((prev) => [...prev, { role: 'user', content: text }])
+    setMessages((prev) => [...prev, { role: 'user', content: text || '(ファイルを添付しました)' }])
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
-    const { reply, error } = await sendMentorChatMessage(activeConvId, text, activeMode, history)
+    const attachArg: Attachment | undefined = currentAttachment
+      ? { mimeType: currentAttachment.mimeType, data: currentAttachment.data }
+      : undefined
+
+    const { reply, error } = await sendMentorChatMessage(
+      activeConvId,
+      text || 'このファイルについて教えてください。',
+      activeMode,
+      history,
+      attachArg
+    )
 
     setMessages((prev) => [
       ...prev,
-      {
-        role: 'assistant',
-        content: error || !reply ? 'メンターに接続できませんでした。' : reply,
-      },
+      { role: 'assistant', content: error || !reply ? 'メンターに接続できませんでした。' : reply },
     ])
     setIsLoading(false)
 
-    if (isFirstMessage) {
+    if (isFirstMessage && text) {
       setIsFirstMessage(false)
       const { title } = await generateConversationTitle(activeConvId, text)
       if (title) {
-        setConversations((prev) =>
-          prev.map((c) => (c.id === activeConvId ? { ...c, title } : c))
-        )
+        setConversations((prev) => prev.map((c) => (c.id === activeConvId ? { ...c, title } : c)))
       }
     }
   }
@@ -174,6 +192,52 @@ export default function MentorPage() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAttachError(null)
+
+    const allowed = ['image/png', 'image/jpeg', 'application/pdf']
+    if (!allowed.includes(file.type)) {
+      setAttachError('png / jpg / pdf のみ添付できます。')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachError('ファイルサイズは10MBまでです。')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const base64 = result.split(',')[1] ?? ''
+      setAttachment({ name: file.name, mimeType: file.type, data: base64 })
+    }
+    reader.onerror = () => setAttachError('ファイルの読み込みに失敗しました。')
+    reader.readAsDataURL(file)
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleChangeMode = async (mode: MentorMode) => {
+    setShowModeChangeDialog(false)
+    if (!activeConvId) return
+
+    const prevMode = activeMode
+    setActiveMode(mode)
+    setConversations((prev) =>
+      prev.map((c) => (c.id === activeConvId ? { ...c, mentorMode: mode } : c))
+    )
+
+    const { error } = await updateConversationMode(activeConvId, mode)
+    if (error) {
+      setActiveMode(prevMode)
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeConvId ? { ...c, mentorMode: prevMode } : c))
+      )
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* 左：チャット一覧 */}
@@ -202,89 +266,92 @@ export default function MentorPage() {
               「新規チャット」から始めましょう。
             </p>
           )}
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => { if (editingId !== conv.id) handleSelectConv(conv) }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && editingId !== conv.id) handleSelectConv(conv) }}
-              onContextMenu={(e) => openMenu(e, conv.id)}
-              className={`group relative w-full rounded-lg transition cursor-pointer ${
-                activeConvId === conv.id ? 'bg-accent/30' : 'hover:bg-muted'
-              }`}
-            >
-              <div className="px-3 py-2.5 pr-8">
-                <div className="flex items-center gap-1.5">
-                  {conv.isPinned && <Pin className="size-3 text-primary shrink-0 fill-primary" />}
-                  <span className="text-xs shrink-0">{MODE_LABELS[conv.mentorMode].icon}</span>
+          {conversations.map((conv) => {
+            const ConvIcon = MODE_LABELS[conv.mentorMode].icon
+            return (
+              <div
+                key={conv.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => { if (editingId !== conv.id) handleSelectConv(conv) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && editingId !== conv.id) handleSelectConv(conv) }}
+                onContextMenu={(e) => openMenu(e, conv.id)}
+                className={`group relative w-full rounded-lg transition cursor-pointer ${
+                  activeConvId === conv.id ? 'bg-accent/30' : 'hover:bg-muted'
+                }`}
+              >
+                <div className="px-3 py-2.5 pr-8">
+                  <div className="flex items-center gap-1.5">
+                    {conv.isPinned && <Pin className="size-3 text-primary shrink-0 fill-primary" />}
+                    <ConvIcon className="size-3.5 text-muted-foreground shrink-0" />
 
-                  {editingId === conv.id ? (
-                    <input
-                      autoFocus
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={() => commitRename(conv.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); commitRename(conv.id) }
-                        if (e.key === 'Escape') setEditingId(null)
-                      }}
-                      className="flex-1 min-w-0 bg-background border border-primary rounded px-1.5 py-0.5 text-sm text-foreground focus:outline-none"
-                    />
-                  ) : (
-                    <span className="text-sm text-foreground truncate">{conv.title}</span>
+                    {editingId === conv.id ? (
+                      <input
+                        autoFocus
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={() => commitRename(conv.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); commitRename(conv.id) }
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        className="flex-1 min-w-0 bg-background border border-primary rounded px-1.5 py-0.5 text-sm text-foreground focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm text-foreground truncate">{conv.title}</span>
+                    )}
+                  </div>
+                  {editingId !== conv.id && (
+                    <p className="text-xs text-muted-foreground mt-0.5 ml-5">
+                      {MODE_LABELS[conv.mentorMode].label}
+                    </p>
                   )}
                 </div>
+
+                {/* ⋯ボタン（ホバーで表示） */}
                 {editingId !== conv.id && (
-                  <p className="text-xs text-muted-foreground mt-0.5 ml-5">
-                    {MODE_LABELS[conv.mentorMode].label}
-                  </p>
+                  <button
+                    onClick={(e) => openMenu(e, conv.id)}
+                    className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
+                    aria-label="メニュー"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+                )}
+
+                {/* ポップオーバーメニュー */}
+                {menuOpenId === conv.id && (
+                  <div
+                    className="absolute top-9 right-1.5 z-50 w-40 bg-card border border-border rounded-xl shadow-lg py-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => startRename(conv)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+                    >
+                      <Pencil className="size-3.5" />
+                      名前を変更
+                    </button>
+                    <button
+                      onClick={() => handlePin(conv)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+                    >
+                      <Pin className="size-3.5" />
+                      {conv.isPinned ? 'ピン留めを外す' : 'ピン留め'}
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpenId(null); setDeleteTarget(conv) }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition text-left"
+                    >
+                      <Trash2 className="size-3.5" />
+                      削除
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {/* ⋯ボタン（ホバーで表示） */}
-              {editingId !== conv.id && (
-                <button
-                  onClick={(e) => openMenu(e, conv.id)}
-                  className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
-                  aria-label="メニュー"
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
-              )}
-
-              {/* ポップオーバーメニュー */}
-              {menuOpenId === conv.id && (
-                <div
-                  className="absolute top-9 right-1.5 z-50 w-40 bg-card border border-border rounded-xl shadow-lg py-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => startRename(conv)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
-                  >
-                    <Pencil className="size-3.5" />
-                    名前を変更
-                  </button>
-                  <button
-                    onClick={() => handlePin(conv)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
-                  >
-                    <Pin className="size-3.5" />
-                    {conv.isPinned ? 'ピン留めを外す' : 'ピン留め'}
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpenId(null); setDeleteTarget(conv) }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition text-left"
-                  >
-                    <Trash2 className="size-3.5" />
-                    削除
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </aside>
 
@@ -294,7 +361,7 @@ export default function MentorPage() {
           <>
             <div className="px-4 py-3 border-b border-border shrink-0">
               <div className="flex items-center gap-2">
-                <span>{MODE_LABELS[activeMode].icon}</span>
+                {(() => { const Icon = MODE_LABELS[activeMode].icon; return <Icon className="size-4 text-foreground" /> })()}
                 <p className="text-sm font-semibold text-foreground">
                   {MODE_LABELS[activeMode].label}メンター
                 </p>
@@ -346,29 +413,86 @@ export default function MentorPage() {
             </div>
 
             <div className="border-t border-border p-3 shrink-0">
-              <div className="flex gap-2 max-w-2xl mx-auto">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSend()
-                    }
-                  }}
-                  placeholder="メッセージを入力..."
-                  rows={1}
-                  disabled={isLoading}
-                  className="flex-1 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32 disabled:opacity-50 bg-background"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
-                  aria-label="送信"
-                >
-                  <ArrowUp className="size-4" />
-                </button>
+              <div className="max-w-2xl mx-auto">
+                {attachment && (
+                  <div className="mb-2 flex items-center gap-2 bg-muted rounded-lg px-3 py-2 w-fit">
+                    <FileText className="size-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground truncate max-w-[200px]">{attachment.name}</span>
+                    <button
+                      onClick={() => setAttachment(null)}
+                      className="text-muted-foreground hover:text-destructive transition"
+                      aria-label="添付を取り消す"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                )}
+                {attachError && (
+                  <p className="mb-2 text-xs text-destructive">{attachError}</p>
+                )}
+                <div className="flex gap-2 items-end">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowPlusMenu((v) => !v)}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card hover:bg-muted transition text-muted-foreground"
+                      aria-label="メニュー"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                    {showPlusMenu && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowPlusMenu(false)} />
+                        <div className="absolute bottom-12 left-0 z-40 w-52 bg-card border border-border rounded-xl shadow-lg py-1">
+                          <button
+                            onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click() }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition text-left"
+                          >
+                            <Paperclip className="size-4" />
+                            ファイルを添付
+                          </button>
+                          <button
+                            onClick={() => { setShowPlusMenu(false); setShowModeChangeDialog(true) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition text-left"
+                          >
+                            <RefreshCw className="size-4" />
+                            メンターの種類を変える
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSend()
+                      }
+                    }}
+                    placeholder="メッセージを入力..."
+                    rows={1}
+                    disabled={isLoading}
+                    className="flex-1 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32 disabled:opacity-50 bg-background"
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={(!input.trim() && !attachment) || isLoading}
+                    className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0"
+                    aria-label="送信"
+                  >
+                    <ArrowUp className="size-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </>
@@ -382,7 +506,7 @@ export default function MentorPage() {
         )}
       </main>
 
-      {/* メンター種類選択ダイアログ */}
+      {/* 新規チャット：メンター種類選択ダイアログ */}
       <AlertDialog open={showModeDialog} onOpenChange={setShowModeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -392,16 +516,51 @@ export default function MentorPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-            {(['idea', 'dev', 'general'] as MentorMode[]).map((mode) => (
-              <AlertDialogAction
-                key={mode}
-                onClick={() => handleCreateConv(mode)}
-                className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
-              >
-                <span className="text-lg">{MODE_LABELS[mode].icon}</span>
-                <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
-              </AlertDialogAction>
-            ))}
+            {(['idea', 'dev', 'general'] as MentorMode[]).map((mode) => {
+              const Icon = MODE_LABELS[mode].icon
+              return (
+                <AlertDialogAction
+                  key={mode}
+                  onClick={() => handleCreateConv(mode)}
+                  className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+                >
+                  <Icon className="size-5" />
+                  <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
+                </AlertDialogAction>
+              )
+            })}
+            <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* メンター種類変更ダイアログ */}
+      <AlertDialog open={showModeChangeDialog} onOpenChange={setShowModeChangeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>メンターの種類を変える</AlertDialogTitle>
+            <AlertDialogDescription>
+              このチャットのメンターを切り替えます。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            {(['idea', 'dev', 'general'] as MentorMode[]).map((mode) => {
+              const Icon = MODE_LABELS[mode].icon
+              return (
+                <AlertDialogAction
+                  key={mode}
+                  onClick={() => handleChangeMode(mode)}
+                  className={`w-full h-auto py-3.5 px-4 rounded-xl text-left flex items-center gap-3 ${
+                    activeMode === mode
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground'
+                  }`}
+                >
+                  <Icon className="size-5" />
+                  <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
+                </AlertDialogAction>
+              )
+            })}
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -21,6 +21,11 @@ export type ConvMessage = {
   createdAt: string
 }
 
+export type Attachment = {
+  mimeType: string
+  data: string
+}
+
 function buildMentorSystemPrompt(mode: MentorMode): string {
   const base = `あなたはBloomerのメンターです。
 技術用語を使わず友達のような口調で話してください。
@@ -129,10 +134,22 @@ export async function sendMentorChatMessage(
   conversationId: string,
   userMessage: string,
   mentorMode: MentorMode,
-  history: { role: 'user' | 'assistant'; content: string }[]
+  history: { role: 'user' | 'assistant'; content: string }[],
+  attachment?: Attachment
 ): Promise<{ reply?: string; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
+
+  if (attachment) {
+    const allowed = ['image/png', 'image/jpeg', 'application/pdf']
+    if (!allowed.includes(attachment.mimeType)) {
+      return { error: '対応していないファイル形式です（png/jpg/pdfのみ）。' }
+    }
+    const approxBytes = (attachment.data.length * 3) / 4
+    if (approxBytes > 10 * 1024 * 1024) {
+      return { error: 'ファイルサイズが大きすぎます（10MBまで）。' }
+    }
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -168,12 +185,18 @@ ${knowledgeText}
 
   const systemPrompt = buildMentorSystemPrompt(mentorMode) + ragSection
 
+  const latestParts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = []
+  if (attachment) {
+    latestParts.push({ inline_data: { mime_type: attachment.mimeType, data: attachment.data } })
+  }
+  latestParts.push({ text: userMessage })
+
   const contents = [
     ...history.map((m) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     })),
-    { role: 'user', parts: [{ text: userMessage }] },
+    { role: 'user', parts: latestParts },
   ]
 
   try {
@@ -316,5 +339,23 @@ export async function deleteConversation(
     .eq('user_id', user.id)
 
   if (error) return { error: 'チャットの削除に失敗しました。' }
+  return { success: true }
+}
+
+export async function updateConversationMode(
+  conversationId: string,
+  mentorMode: MentorMode
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ mentor_mode: mentorMode })
+    .eq('id', conversationId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'メンター種類の変更に失敗しました。' }
   return { success: true }
 }
