@@ -156,7 +156,7 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
         </nav>
 
         <div className="px-4 py-4 border-t border-border space-y-1">
-          <a href="/chat" className="flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs">
+          <a href="/mentor" className="flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs">
             <MessageCircle className="size-4 shrink-0" /> メンターと話す
           </a>
           <a href="/projects" className="flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs">
@@ -192,7 +192,7 @@ export default function QuestDashboard({ activeProjectId, mentorOpen }: QuestDas
                 <div className="absolute right-0 top-10 w-48 bg-card rounded-2xl shadow-lg border border-border py-2 z-50">
                   <a href="/profile" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition" onClick={() => setMenuOpen(false)}><User className="size-4" /> プロフィール</a>
                   <a href="/projects" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition" onClick={() => setMenuOpen(false)}><Folder className="size-4" /> マイプロジェクト</a>
-                  <a href="/chat" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition" onClick={() => setMenuOpen(false)}><MessageCircle className="size-4" /> メンターと話す</a>
+                  <a href="/mentor" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition" onClick={() => setMenuOpen(false)}><MessageCircle className="size-4" /> メンターと話す</a>
                   <div className="border-t border-border mt-1 pt-1">
                     <button onClick={() => { setMenuOpen(false); handleSignOut() }} className="flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition w-full text-left"><LogOut className="size-4" /> ログアウト</button>
                   </div>
