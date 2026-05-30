@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ArrowUp, Plus, MessageCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal, Pencil, Pin, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -18,6 +19,9 @@ import {
   getConversationMessages,
   sendMentorChatMessage,
   generateConversationTitle,
+  renameConversation,
+  pinConversation,
+  deleteConversation,
   type Conversation,
   type MentorMode,
 } from '@/app/actions/mentor-chat'
@@ -31,6 +35,7 @@ const MODE_LABELS: Record<MentorMode, { icon: string; label: string }> = {
 }
 
 export default function MentorPage() {
+  const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState<MentorMode>('general')
@@ -39,6 +44,10 @@ export default function MentorPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showModeDialog, setShowModeDialog] = useState(false)
   const [isFirstMessage, setIsFirstMessage] = useState(false)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,6 +57,14 @@ export default function MentorPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ⋯メニュー外クリックで閉じる
+  useEffect(() => {
+    if (!menuOpenId) return
+    const close = () => setMenuOpenId(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [menuOpenId])
 
   const handleSelectConv = async (conv: Conversation) => {
     setActiveConvId(conv.id)
@@ -103,11 +120,72 @@ export default function MentorPage() {
     }
   }
 
+  const openMenu = (e: React.MouseEvent, convId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenuOpenId((prev) => (prev === convId ? null : convId))
+  }
+
+  const startRename = (conv: Conversation) => {
+    setMenuOpenId(null)
+    setEditingId(conv.id)
+    setEditingTitle(conv.title)
+  }
+
+  const commitRename = async (convId: string) => {
+    const newTitle = editingTitle.trim()
+    setEditingId(null)
+    if (!newTitle) return
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, title: newTitle } : c))
+    )
+    const { error } = await renameConversation(convId, newTitle)
+    if (error) {
+      getConversations().then(setConversations).catch(() => {})
+    }
+  }
+
+  const handlePin = async (conv: Conversation) => {
+    setMenuOpenId(null)
+    const next = !conv.isPinned
+    setConversations((prev) => {
+      const updated = prev.map((c) => (c.id === conv.id ? { ...c, isPinned: next } : c))
+      return [...updated].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      })
+    })
+    const { error } = await pinConversation(conv.id, next)
+    if (error) {
+      getConversations().then(setConversations).catch(() => {})
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setDeleteTarget(null)
+    const { error } = await deleteConversation(target.id)
+    if (error) return
+    setConversations((prev) => prev.filter((c) => c.id !== target.id))
+    if (activeConvId === target.id) {
+      setActiveConvId(null)
+      setMessages([])
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* 左：チャット一覧 */}
       <aside className="w-64 shrink-0 border-r border-border bg-card flex flex-col h-screen">
-        <div className="p-3 border-b border-border">
+        <div className="p-3 border-b border-border space-y-2">
+          <button
+            onClick={() => router.push('/')}
+            className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition px-1 py-1"
+          >
+            <ArrowLeft className="size-4" />
+            ダッシュボード
+          </button>
           <button
             onClick={() => setShowModeDialog(true)}
             className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 text-sm font-medium hover:bg-primary/90 transition"
@@ -125,21 +203,87 @@ export default function MentorPage() {
             </p>
           )}
           {conversations.map((conv) => (
-            <button
+            <div
               key={conv.id}
-              onClick={() => handleSelectConv(conv)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg transition ${
+              role="button"
+              tabIndex={0}
+              onClick={() => { if (editingId !== conv.id) handleSelectConv(conv) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && editingId !== conv.id) handleSelectConv(conv) }}
+              onContextMenu={(e) => openMenu(e, conv.id)}
+              className={`group relative w-full rounded-lg transition cursor-pointer ${
                 activeConvId === conv.id ? 'bg-accent/30' : 'hover:bg-muted'
               }`}
             >
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs shrink-0">{MODE_LABELS[conv.mentorMode].icon}</span>
-                <span className="text-sm text-foreground truncate">{conv.title}</span>
+              <div className="px-3 py-2.5 pr-8">
+                <div className="flex items-center gap-1.5">
+                  {conv.isPinned && <Pin className="size-3 text-primary shrink-0 fill-primary" />}
+                  <span className="text-xs shrink-0">{MODE_LABELS[conv.mentorMode].icon}</span>
+
+                  {editingId === conv.id ? (
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => commitRename(conv.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); commitRename(conv.id) }
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      className="flex-1 min-w-0 bg-background border border-primary rounded px-1.5 py-0.5 text-sm text-foreground focus:outline-none"
+                    />
+                  ) : (
+                    <span className="text-sm text-foreground truncate">{conv.title}</span>
+                  )}
+                </div>
+                {editingId !== conv.id && (
+                  <p className="text-xs text-muted-foreground mt-0.5 ml-5">
+                    {MODE_LABELS[conv.mentorMode].label}
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 ml-5">
-                {MODE_LABELS[conv.mentorMode].label}
-              </p>
-            </button>
+
+              {/* ⋯ボタン（ホバーで表示） */}
+              {editingId !== conv.id && (
+                <button
+                  onClick={(e) => openMenu(e, conv.id)}
+                  className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
+                  aria-label="メニュー"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+              )}
+
+              {/* ポップオーバーメニュー */}
+              {menuOpenId === conv.id && (
+                <div
+                  className="absolute top-9 right-1.5 z-50 w-40 bg-card border border-border rounded-xl shadow-lg py-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => startRename(conv)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+                  >
+                    <Pencil className="size-3.5" />
+                    名前を変更
+                  </button>
+                  <button
+                    onClick={() => handlePin(conv)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+                  >
+                    <Pin className="size-3.5" />
+                    {conv.isPinned ? 'ピン留めを外す' : 'ピン留め'}
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpenId(null); setDeleteTarget(conv) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition text-left"
+                  >
+                    <Trash2 className="size-3.5" />
+                    削除
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </aside>
@@ -258,6 +402,30 @@ export default function MentorPage() {
                 <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
               </AlertDialogAction>
             ))}
+            <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 削除確認ダイアログ */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>このチャットを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{deleteTarget?.title}」と、その会話履歴がすべて削除されます。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              削除する
+            </AlertDialogAction>
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>

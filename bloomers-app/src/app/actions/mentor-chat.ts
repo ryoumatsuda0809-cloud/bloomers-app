@@ -9,6 +9,7 @@ export type Conversation = {
   id: string
   title: string
   mentorMode: MentorMode
+  isPinned: boolean
   createdAt: string
   updatedAt: string
 }
@@ -58,6 +59,7 @@ export async function getConversations(): Promise<Conversation[]> {
     .from('conversations')
     .select('*')
     .eq('user_id', user.id)
+    .order('is_pinned', { ascending: false })
     .order('updated_at', { ascending: false })
 
   if (error) return []
@@ -66,6 +68,7 @@ export async function getConversations(): Promise<Conversation[]> {
     id: row.id,
     title: row.title,
     mentorMode: row.mentor_mode as MentorMode,
+    isPinned: row.is_pinned ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))
@@ -91,6 +94,7 @@ export async function createConversation(
       id: data.id,
       title: data.title,
       mentorMode: data.mentor_mode as MentorMode,
+      isPinned: data.is_pinned ?? false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     },
@@ -257,4 +261,60 @@ export async function generateConversationTitle(
     .eq('user_id', user.id)
 
   return { title }
+}
+
+export async function renameConversation(
+  conversationId: string,
+  newTitle: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const trimmed = newTitle.trim()
+  if (!trimmed) return { error: 'タイトルが空です。' }
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ title: trimmed.slice(0, 50) })
+    .eq('id', conversationId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'タイトルの変更に失敗しました。' }
+  return { success: true }
+}
+
+export async function pinConversation(
+  conversationId: string,
+  isPinned: boolean
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ is_pinned: isPinned })
+    .eq('id', conversationId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'ピン留めに失敗しました。' }
+  return { success: true }
+}
+
+export async function deleteConversation(
+  conversationId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'チャットの削除に失敗しました。' }
+  return { success: true }
 }
