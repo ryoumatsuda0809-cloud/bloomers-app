@@ -94,7 +94,7 @@ export const useQuestStore = create<QuestState>()((set) => ({
           .map((q) => q.id)
       )
       const hasActiveElsewhere = state.quests.some(
-        (q) => q.id !== id && q.status === 'active'
+        (q) => q.id !== id && (q.status === 'active' || q.status === 'in_progress')
       )
       return {
         quests: state.quests.map((q) => {

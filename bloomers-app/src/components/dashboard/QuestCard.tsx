@@ -193,26 +193,44 @@ export default function QuestCard({
           </div>
         )}
 
-        {/* completed: 完了済み表示のみ */}
+        {/* completed: 完了済み表示 + 見直すリンク */}
         {status === 'completed' && (
-          <span className="w-full text-center text-xs bg-accent/30 text-accent-foreground px-2 py-2 rounded-md">
-            完了済み ✓
-          </span>
+          <div className="w-full flex items-center justify-between gap-2">
+            <span className="flex-1 text-center text-xs bg-accent/30 text-accent-foreground px-2 py-2 rounded-md">
+              完了済み ✓
+            </span>
+            {href && (
+              <button
+                onClick={() => router.push(`${href}?review=1`)}
+                className="text-xs text-muted-foreground hover:text-primary transition underline shrink-0"
+              >
+                見直す
+              </button>
+            )}
+          </div>
         )}
 
-        {/* skipped: スキップ済みバッジ + やり直しボタン */}
+        {/* skipped: スキップ済みバッジ + 見直す + やり直しボタン */}
         {status === 'skipped' && (
           <div className="w-full flex items-center justify-between gap-2">
             <span className="flex-1 text-center text-xs bg-muted text-muted-foreground px-2 py-2 rounded-md">
               スキップ済み
             </span>
+            {href && (
+              <button
+                onClick={() => router.push(`${href}?review=1`)}
+                className="text-xs text-muted-foreground hover:text-primary transition underline shrink-0"
+              >
+                見直す
+              </button>
+            )}
             <button
               onClick={() => withSubmit(async () => { if (onReopen) await onReopen(id) })}
               disabled={isSubmitting}
-              title="やり直す"
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-primary transition disabled:opacity-50 shrink-0"
             >
               <RotateCcw className="size-3.5" />
+              やり直す
             </button>
           </div>
         )}

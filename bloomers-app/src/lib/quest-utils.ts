@@ -101,7 +101,9 @@ export function mergeQuestsWithProgress(
       .map((q) => q.id)
   )
 
-  let nextActiveAssigned = false
+  let nextActiveAssigned = definitions.some(
+    (q) => (progressMap[q.id] ?? 'not_started') === 'in_progress'
+  )
 
   return [...definitions]
     .sort((a, b) => a.order - b.order)
