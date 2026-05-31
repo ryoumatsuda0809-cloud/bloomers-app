@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Source_Serif_4, Noto_Serif_JP, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { SidebarProvider } from '@/components/providers/SidebarProvider'
 
 const sourceSerif = Source_Serif_4({
   subsets: ['latin'],
@@ -26,6 +27,15 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: 'Bloomers Quest Dashboard',
   description: 'Your development roadmap',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Bloomers',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 }
 
 export default function RootLayout({
@@ -54,10 +64,14 @@ export default function RootLayout({
         })();`,
           }}
         />
+        <meta name="theme-color" content="#6b2040" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className="font-sans antialiased">
         <TooltipProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </TooltipProvider>
       </body>
     </html>

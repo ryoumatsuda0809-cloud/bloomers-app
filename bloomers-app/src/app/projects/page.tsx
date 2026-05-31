@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea, pauseProject } from '@/app/actions/projects'
 import type { ProjectIdea } from '@/app/actions/projects'
 import { Skeleton } from '@/components/ui/skeleton'
+import AppShell from '@/components/layout/AppShell'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,22 +57,25 @@ export default function ProjectsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background px-4 py-8">
-        <div className="max-w-lg mx-auto space-y-6">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-8 w-48" />
-          <div className="space-y-3">
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
+      <AppShell showRoadmap={false}>
+        <div className="px-4 py-8">
+          <div className="max-w-lg mx-auto space-y-6">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-8 w-48" />
+            <div className="space-y-3">
+              <Skeleton className="h-28 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-2xl" />
+            </div>
           </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <AppShell showRoadmap={false}>
+      <div className="px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
 
         <div className="flex items-center gap-3">
@@ -272,6 +276,7 @@ export default function ProjectsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </AppShell>
   )
 }
