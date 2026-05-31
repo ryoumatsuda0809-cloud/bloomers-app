@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, LogOut } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppShell from '@/components/layout/AppShell'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 const MBTI_TYPES = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
@@ -34,6 +39,7 @@ export default function ProfilePage() {
   const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -86,6 +92,12 @@ export default function ProfilePage() {
     if (!confirm('このプロジェクト案を削除しますか？')) return
     await deleteProjectIdea(projectId)
     setProjects(projects.filter((p) => p.id !== projectId))
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   const handleReset = async () => {
@@ -285,8 +297,40 @@ export default function ProfilePage() {
           </Button>
         </div>
 
+        {/* ログアウト */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="text-xs text-muted-foreground font-medium mb-3">設定</p>
+          <button
+            onClick={() => setShowLogoutDialog(true)}
+            className="w-full flex items-center justify-center gap-2 text-sm text-destructive border border-destructive/30 rounded-xl py-2.5 hover:bg-destructive/10 transition"
+          >
+            <LogOut className="size-4" />
+            ログアウト
+          </button>
+        </div>
+
       </div>
       </div>
+
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ログアウトしますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              またいつでも戻ってこられます。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={handleSignOut}
+              className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              ログアウト
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }

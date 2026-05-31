@@ -2,10 +2,9 @@
 
 import { useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useSidebar } from '@/components/providers/SidebarProvider'
 import { useQuestStore } from '@/store/useQuestStore'
-import { Map, FolderKanban, MessageCircle, User, LogOut } from 'lucide-react'
+import { Map, FolderKanban, MessageCircle, User } from 'lucide-react'
 
 type AppSidebarProps = {
   showRoadmap?: boolean
@@ -23,15 +22,7 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
   const pathname = usePathname()
   const { isOpen, width, close, open, setWidth } = useSidebar()
   const quests = useQuestStore((state) => state.quests)
-  const resetStore = useQuestStore((state) => state.resetStore)
   const draggingRef = useRef(false)
-
-  const handleSignOut = async () => {
-    resetStore()
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   const handleNavClick = (href: string) => {
     router.push(href)
@@ -93,14 +84,6 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
             )
           })}
         </div>
-
-        <button
-          onClick={handleSignOut}
-          title="ログアウト"
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition shrink-0"
-        >
-          <LogOut className="size-4" />
-        </button>
       </aside>
     )
   }
@@ -174,17 +157,6 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
             )
           })}
         </nav>
-
-        {/* ログアウト */}
-        <div className="px-3 py-3 border-t border-border shrink-0">
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition text-left"
-          >
-            <LogOut className="size-4 shrink-0" />
-            ログアウト
-          </button>
-        </div>
 
         {/* ドラッグハンドル（デスクトップのみ・右端絶対配置） */}
         <div
