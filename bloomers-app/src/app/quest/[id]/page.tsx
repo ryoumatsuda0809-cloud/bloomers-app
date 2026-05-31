@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter, useParams, notFound } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useParams, useSearchParams, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateStepCompletion, updateQuestStepCompletion } from '@/app/actions/setup'
 import type { SetupStep } from '@/app/actions/setup'
@@ -17,11 +17,31 @@ import DecisionDialog from '@/components/quest/DecisionDialog'
 import NextQuestPreview from '@/components/quest/NextQuestPreview'
 import ThinkingStep from '@/components/quest/ThinkingStep'
 import { saveStepAnswer } from '@/app/actions/setup'
+import { getQuestNotes, saveQuestNote } from '@/app/actions/projects'
+import { getMentorHistory } from '@/app/actions/chat'
+import type { ChatMessage } from '@/app/actions/chat'
 
 export default function QuestPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="max-w-lg mx-auto space-y-6">
+          <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+          <div className="h-8 w-56 bg-muted rounded animate-pulse" />
+        </div>
+      </div>
+    }>
+      <QuestContent />
+    </Suspense>
+  )
+}
+
+function QuestContent() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const id = typeof params.id === 'string' ? params.id : ''
+  const isReviewMode = searchParams.get('review') === '1'
 
   const [steps, setSteps] = useState<SetupStep[]>([])
   const [projectId, setProjectId] = useState<string>('')
@@ -33,6 +53,11 @@ export default function QuestPage() {
   const [showCompleteOverlay, setShowCompleteOverlay] = useState(false)
   const [showDecisionDialog, setShowDecisionDialog] = useState(false)
   const [showNextQuestPreview, setShowNextQuestPreview] = useState(false)
+  const [note, setNote] = useState('')
+  const [noteSaveStatus, setNoteSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [mentorOpen, setMentorOpen] = useState(true)
+  const [mentorHistory, setMentorHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const wasCompleteOnLoad = useRef(false)
   const completionTriggered = useRef(false)
@@ -81,6 +106,7 @@ export default function QuestPage() {
   }, [isLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (isReviewMode) return
     if (
       !isLoading &&
       allCompleted &&
@@ -92,7 +118,29 @@ export default function QuestPage() {
       void updateQuestStatus(id, 'completed', projectId)
       setShowCompleteOverlay(true)
     }
-  }, [allCompleted, isLoading, projectId, id])
+  }, [allCompleted, isLoading, projectId, id, isReviewMode])
+
+  useEffect(() => {
+    if (!projectId) return
+    getQuestNotes(projectId).then((notes) => {
+      setNote(notes[id] ?? '')
+    }).catch(() => {})
+    getMentorHistory(projectId, id).then((history: ChatMessage[]) => {
+      setMentorHistory(history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })))
+    }).catch(() => {})
+  }, [projectId, id])
+
+  const handleNoteChange = (value: string) => {
+    setNote(value)
+    setNoteSaveStatus('saving')
+    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current)
+    noteSaveTimer.current = setTimeout(async () => {
+      if (!projectId) return
+      const { error } = await saveQuestNote(projectId, id, value)
+      setNoteSaveStatus(error ? 'idle' : 'saved')
+      if (!error) setTimeout(() => setNoteSaveStatus('idle'), 2000)
+    }, 800)
+  }
 
   const handleStepToggle = async (stepId: string) => {
     setIsCompletingId(stepId)
@@ -271,7 +319,7 @@ export default function QuestPage() {
                     </div>
                   </div>
 
-                  {index === currentStep && !step.completed && (
+                  {index === currentStep && !step.completed && !isReviewMode && (
                     <div className="space-y-2 pl-10">
                       {step.type === 'thinking' ? (
                         <ThinkingStep
@@ -311,20 +359,72 @@ export default function QuestPage() {
               ))}
             </div>
 
+            {/* 見直しモード：メンター会話履歴 */}
+            {isReviewMode && mentorHistory.length > 0 && (
+              <div className="border-t border-border pt-5">
+                <h3 className="text-sm font-semibold text-foreground mb-3">💬 このクエストでのメンターとの会話</h3>
+                <div className="space-y-2">
+                  {mentorHistory.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {m.role === 'assistant' && <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>}
+                      <div className={`rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap max-w-[80%] ${
+                        m.role === 'user'
+                          ? 'bg-primary text-primary-foreground rounded-br-sm'
+                          : 'bg-muted text-foreground rounded-bl-sm'
+                      }`}>
+                        {m.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* メモ欄（常時表示・完了後も編集可・左カラム最下部） */}
+            <div className="border-t border-border pt-5">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-foreground">📝 このクエストのメモ</h3>
+                <span className="text-xs text-muted-foreground">
+                  {noteSaveStatus === 'saving' && '保存中...'}
+                  {noteSaveStatus === 'saved' && '保存しました'}
+                </span>
+              </div>
+              <textarea
+                value={note}
+                onChange={(e) => handleNoteChange(e.target.value)}
+                placeholder="気づいたこと、学んだことを自由に書いてください。後からいつでも見直せます。"
+                rows={4}
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm text-foreground resize-y focus:outline-none focus:border-primary bg-background min-h-[100px]"
+              />
+            </div>
+
             {/* モバイルFABのための下部余白 */}
             <div className="xl:hidden h-24" />
 
           </div>
         </div>
 
-        {/* MentorPanel（デスクトップ常駐 + モバイルSheet を内包）*/}
+        {/* MentorPanel（デスクトップ開閉対応 + モバイルSheet を内包）*/}
         {projectId && (
           <MentorPanel
             questId={id}
             questTitle={config.title}
             stepTitle={steps[currentStep]?.title ?? ''}
             projectId={projectId}
+            desktopOpen={mentorOpen}
+            onDesktopClose={() => setMentorOpen(false)}
           />
+        )}
+
+        {/* デスクトップ：メンターが閉じている時の再展開フローティングボタン */}
+        {projectId && !mentorOpen && (
+          <button
+            onClick={() => setMentorOpen(true)}
+            className="hidden xl:flex fixed bottom-6 right-6 z-40 w-12 h-12 items-center justify-center rounded-full bg-card border border-border shadow-lg hover:bg-muted transition text-xl"
+            aria-label="メンターを開く"
+          >
+            🌸
+          </button>
         )}
 
       </div>

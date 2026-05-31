@@ -31,6 +31,8 @@ interface MentorPanelProps {
   projectId: string
   mode?: 'idea' | 'quest'
   initialOpen?: boolean
+  desktopOpen?: boolean
+  onDesktopClose?: () => void
 }
 
 const FALLBACK_SYSTEM_PROMPT = `あなたはBloomerのメンターです。
@@ -49,6 +51,8 @@ export default function MentorPanel({
   projectId,
   mode = 'quest',
   initialOpen = false,
+  desktopOpen,
+  onDesktopClose,
 }: MentorPanelProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -273,20 +277,31 @@ export default function MentorPanel({
 
   return (
     <>
-      {/* デスクトップ（xl以上）：右カラム常駐 */}
-      <aside className="hidden xl:flex flex-col w-80 shrink-0 border-l border-border bg-card sticky top-0 h-screen">
-        <div className="px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🌸</span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground">メンター</p>
-              <p className="text-xs text-muted-foreground truncate">{questTitle}</p>
+      {/* デスクトップ（xl以上）：右カラム常駐（desktopOpen制御対応） */}
+      {(desktopOpen ?? true) && (
+        <aside className="hidden xl:flex flex-col w-80 shrink-0 border-l border-border bg-card sticky top-0 h-screen">
+          <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base">🌸</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">メンター</p>
+                <p className="text-xs text-muted-foreground truncate">{questTitle}</p>
+              </div>
             </div>
+            {onDesktopClose && (
+              <button
+                onClick={onDesktopClose}
+                className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground shrink-0"
+                aria-label="メンターを閉じる"
+              >
+                <span className="text-sm">»</span>
+              </button>
+            )}
           </div>
-        </div>
-        <ChatMessages />
-        <InputArea />
-      </aside>
+          <ChatMessages />
+          <InputArea />
+        </aside>
+      )}
 
       {/* モバイル・タブレット（xl未満）：Shadcn Sheet */}
       <div className="xl:hidden fixed bottom-4 right-4 z-50">
