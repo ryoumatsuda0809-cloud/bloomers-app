@@ -85,9 +85,9 @@ export default function NotesPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 7 * 1024 * 1024) {
       setUploadStatus('error')
-      setUploadMessage('ファイルサイズが10MBを超えています。')
+      setUploadMessage('ファイルサイズが7MBを超えています。')
       return
     }
 

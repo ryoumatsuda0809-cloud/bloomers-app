@@ -93,8 +93,8 @@ export async function addUserKnowledge(
   if (!user) return { error: '認証エラーが発生しました。' }
 
   const approxBytes = (base64.length * 3) / 4
-  if (approxBytes > 10 * 1024 * 1024) {
-    return { error: 'ファイルサイズが10MBを超えています。' }
+  if (approxBytes > 7 * 1024 * 1024) {
+    return { error: 'ファイルサイズが7MBを超えています。' }
   }
 
   const text = await extractText(mimeType, base64)
