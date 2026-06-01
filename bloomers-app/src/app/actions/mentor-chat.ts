@@ -3,13 +3,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
+import { getCustomMentor } from '@/app/actions/custom-mentors'
 
-export type MentorMode = 'idea' | 'dev' | 'general'
+export type MentorMode = 'idea' | 'dev' | 'general' | 'custom'
 
 export type Conversation = {
   id: string
   title: string
   mentorMode: MentorMode
+  customMentorId: string | null
   isPinned: boolean
   createdAt: string
   updatedAt: string
@@ -74,6 +76,7 @@ export async function getConversations(): Promise<Conversation[]> {
     id: row.id,
     title: row.title,
     mentorMode: row.mentor_mode as MentorMode,
+    customMentorId: (row.custom_mentor_id as string | null) ?? null,
     isPinned: row.is_pinned ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -81,7 +84,8 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function createConversation(
-  mentorMode: MentorMode
+  mentorMode: MentorMode,
+  customMentorId?: string
 ): Promise<{ conversation?: Conversation; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -89,7 +93,12 @@ export async function createConversation(
 
   const { data, error } = await supabase
     .from('conversations')
-    .insert({ user_id: user.id, mentor_mode: mentorMode, title: '新規チャット' })
+    .insert({
+      user_id: user.id,
+      mentor_mode: mentorMode,
+      custom_mentor_id: customMentorId ?? null,
+      title: '新規チャット',
+    })
     .select()
     .single()
 
@@ -100,6 +109,7 @@ export async function createConversation(
       id: data.id,
       title: data.title,
       mentorMode: data.mentor_mode as MentorMode,
+      customMentorId: (data.custom_mentor_id as string | null) ?? null,
       isPinned: data.is_pinned ?? false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -136,7 +146,8 @@ export async function sendMentorChatMessage(
   userMessage: string,
   mentorMode: MentorMode,
   history: { role: 'user' | 'assistant'; content: string }[],
-  attachment?: Attachment
+  attachment?: Attachment,
+  customMentorId?: string
 ): Promise<{ reply?: string; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
@@ -165,6 +176,21 @@ export async function sendMentorChatMessage(
     quest_id: null,
   })
 
+  let baseSystemPrompt: string
+  let knowledgeSourceFilter: string[] | undefined = undefined
+
+  if (mentorMode === 'custom' && customMentorId) {
+    const mentor = await getCustomMentor(customMentorId)
+    if (mentor) {
+      baseSystemPrompt = mentor.systemPrompt
+      knowledgeSourceFilter = mentor.linkedKnowledgeIds.length > 0 ? mentor.linkedKnowledgeIds : undefined
+    } else {
+      baseSystemPrompt = buildMentorSystemPrompt('general')
+    }
+  } else {
+    baseSystemPrompt = buildMentorSystemPrompt(mentorMode)
+  }
+
   let ragSection = ''
   try {
     const chunks = await searchKnowledge(userMessage)
@@ -186,7 +212,7 @@ ${knowledgeText}
 
   let userKnowledgeBlock = ''
   try {
-    const userChunks = await searchUserKnowledge(userMessage)
+    const userChunks = await searchUserKnowledge(userMessage, knowledgeSourceFilter)
     if (userChunks.length > 0) {
       userKnowledgeBlock = '\n<user_knowledge>\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください。\n' +
         userChunks.map((c) => c.content).join('\n---\n') +
@@ -196,7 +222,7 @@ ${knowledgeText}
     // ユーザー資料RAG失敗はメンター応答に影響させない
   }
 
-  const systemPrompt = buildMentorSystemPrompt(mentorMode) + ragSection + userKnowledgeBlock
+  const systemPrompt = baseSystemPrompt + ragSection + userKnowledgeBlock
 
   const latestParts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = []
   if (attachment) {

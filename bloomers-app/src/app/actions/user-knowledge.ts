@@ -129,7 +129,10 @@ export async function addUserKnowledge(
   return { success: true, chunkCount: rows.length }
 }
 
-export async function searchUserKnowledge(query: string): Promise<UserKnowledgeResult[]> {
+export async function searchUserKnowledge(
+  query: string,
+  sourceFilter?: string[]
+): Promise<UserKnowledgeResult[]> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -141,11 +144,16 @@ export async function searchUserKnowledge(query: string): Promise<UserKnowledgeR
     const { data, error } = await supabase.rpc('match_user_knowledge_chunks', {
       query_embedding: `[${vec.join(',')}]`,
       p_user_id: user.id,
-      match_count: 3,
+      match_count: 5,
       match_threshold: 0.0,
     })
     if (error || !data) return []
-    return data as UserKnowledgeResult[]
+
+    let results = data as UserKnowledgeResult[]
+    if (sourceFilter && sourceFilter.length > 0) {
+      results = results.filter((r) => r.source && sourceFilter.includes(r.source))
+    }
+    return results.slice(0, 3)
   } catch {
     return []
   }
