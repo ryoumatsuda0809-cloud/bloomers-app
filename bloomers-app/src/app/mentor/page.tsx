@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal,
-  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Wrench,
+  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Wrench, Bot, Settings,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -31,6 +31,10 @@ import {
   type MentorMode,
   type Attachment,
 } from '@/app/actions/mentor-chat'
+import {
+  getCustomMentors,
+  type CustomMentor,
+} from '@/app/actions/custom-mentors'
 
 type UIMessage = { role: 'user' | 'assistant'; content: string }
 
@@ -38,13 +42,16 @@ const MODE_LABELS: Record<MentorMode, { icon: LucideIcon; label: string }> = {
   idea: { icon: Sprout, label: 'アイデア出し' },
   dev: { icon: Wrench, label: '問題解決' },
   general: { icon: MessageCircle, label: 'なんでも相談' },
+  custom: { icon: Bot, label: 'カスタム' },
 }
 
 export default function MentorPage() {
   const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [customMentors, setCustomMentors] = useState<CustomMentor[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState<MentorMode>('general')
+  const [activeCustomMentorId, setActiveCustomMentorId] = useState<string | null>(null)
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -63,6 +70,7 @@ export default function MentorPage() {
 
   useEffect(() => {
     getConversations().then(setConversations).catch(() => {})
+    getCustomMentors().then(setCustomMentors).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -80,6 +88,7 @@ export default function MentorPage() {
   const handleSelectConv = async (conv: Conversation) => {
     setActiveConvId(conv.id)
     setActiveMode(conv.mentorMode)
+    setActiveCustomMentorId(conv.customMentorId)
     setIsFirstMessage(false)
     try {
       const msgs = await getConversationMessages(conv.id)
@@ -96,6 +105,19 @@ export default function MentorPage() {
     setConversations((prev) => [conversation, ...prev])
     setActiveConvId(conversation.id)
     setActiveMode(mode)
+    setActiveCustomMentorId(null)
+    setMessages([])
+    setIsFirstMessage(true)
+  }
+
+  const handleCreateCustomConv = async (customMentorId: string) => {
+    setShowModeDialog(false)
+    const { conversation, error } = await createConversation('custom', customMentorId)
+    if (error || !conversation) return
+    setConversations((prev) => [conversation, ...prev])
+    setActiveConvId(conversation.id)
+    setActiveMode('custom')
+    setActiveCustomMentorId(customMentorId)
     setMessages([])
     setIsFirstMessage(true)
   }
@@ -120,7 +142,8 @@ export default function MentorPage() {
       text || 'このファイルについて教えてください。',
       activeMode,
       history,
-      attachArg
+      attachArg,
+      activeCustomMentorId ?? undefined
     )
 
     setMessages((prev) => [
@@ -529,6 +552,30 @@ export default function MentorPage() {
                 </AlertDialogAction>
               )
             })}
+            {customMentors.length > 0 && (
+              <>
+                <div className="border-t border-border my-1" />
+                <p className="text-xs font-semibold text-muted-foreground px-1">マイメンター</p>
+                {customMentors.map((m) => (
+                  <AlertDialogAction
+                    key={m.id}
+                    onClick={() => handleCreateCustomConv(m.id)}
+                    className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+                  >
+                    <Bot className="size-5" />
+                    <span className="font-medium text-sm">{m.name}</span>
+                  </AlertDialogAction>
+                ))}
+              </>
+            )}
+            <div className="border-t border-border my-1" />
+            <AlertDialogAction
+              onClick={() => { setShowModeDialog(false); router.push('/mentor/custom') }}
+              className="w-full h-auto py-2.5 px-4 bg-transparent border border-dashed border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+            >
+              <Settings className="size-4" />
+              <span className="text-sm">カスタムメンターを管理</span>
+            </AlertDialogAction>
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
