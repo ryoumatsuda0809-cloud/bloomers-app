@@ -4,7 +4,7 @@ import { useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSidebar } from '@/components/providers/SidebarProvider'
 import { useQuestStore } from '@/store/useQuestStore'
-import { Map, FolderKanban, MessageCircle, User } from 'lucide-react'
+import { Map, FolderKanban, MessageCircle, User, NotebookPen } from 'lucide-react'
 
 type AppSidebarProps = {
   showRoadmap?: boolean
@@ -14,8 +14,10 @@ const NAV_ITEMS = [
   { href: '/', label: 'ロードマップ', icon: Map },
   { href: '/projects', label: 'マイプロジェクト', icon: FolderKanban },
   { href: '/mentor', label: 'メンターと話す', icon: MessageCircle },
-  { href: '/profile', label: 'プロフィール', icon: User },
+  { href: '/notes', label: 'メモ', icon: NotebookPen },
 ]
+
+const PROFILE_ITEM = { href: '/profile', label: 'プロフィール', icon: User }
 
 export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
   const router = useRouter()
@@ -84,6 +86,19 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
             )
           })}
         </div>
+
+        {/* 下部固定：プロフィール */}
+        <button
+          onClick={() => router.push(PROFILE_ITEM.href)}
+          title={PROFILE_ITEM.label}
+          className={`w-9 h-9 flex items-center justify-center rounded-lg transition shrink-0 ${
+            pathname === PROFILE_ITEM.href
+              ? 'bg-accent/30 text-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          <User className="size-4" />
+        </button>
       </aside>
     )
   }
@@ -157,6 +172,21 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
             )
           })}
         </nav>
+
+        {/* 下部固定：プロフィール */}
+        <div className="px-3 py-3 border-t border-border shrink-0">
+          <button
+            onClick={() => handleNavClick(PROFILE_ITEM.href)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition text-left ${
+              pathname === PROFILE_ITEM.href
+                ? 'bg-accent/30 text-foreground font-medium'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <User className="size-4 shrink-0" />
+            {PROFILE_ITEM.label}
+          </button>
+        </div>
 
         {/* ドラッグハンドル（デスクトップのみ・右端絶対配置） */}
         <div

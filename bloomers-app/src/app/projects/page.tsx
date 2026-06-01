@@ -7,6 +7,7 @@ import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea, p
 import type { ProjectIdea } from '@/app/actions/projects'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppShell from '@/components/layout/AppShell'
+import { QUEST_CONFIG } from '@/lib/quest-utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -227,6 +228,29 @@ export default function ProjectsPage() {
                     削除
                   </button>
                 </div>
+
+                {/* 振り返りノート集約（メモがあるクエストのみ表示） */}
+                {((['q1', 'q2', 'q3', 'q4', 'q5'] as const).some(
+                  (qid) => project.questNotes?.[qid]?.trim()
+                )) && (
+                  <div className="px-5 pb-5 border-t border-border pt-4">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">📔 振り返りノート</p>
+                    <div className="space-y-3">
+                      {(['q1', 'q2', 'q3', 'q4', 'q5'] as const)
+                        .filter((qid) => project.questNotes?.[qid]?.trim())
+                        .map((qid) => (
+                          <div key={qid}>
+                            <p className="text-xs font-medium text-foreground">
+                              {QUEST_CONFIG[qid]?.title ?? qid}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap line-clamp-3">
+                              {project.questNotes[qid]}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

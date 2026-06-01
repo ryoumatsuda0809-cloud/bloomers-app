@@ -13,6 +13,7 @@ export type ProjectIdea = {
   isPinned: boolean
   status: string
   createdAt: string
+  questNotes: Record<string, string>
 }
 
 export async function saveProjectIdea(
@@ -60,6 +61,7 @@ export async function getProjectIdeas(): Promise<ProjectIdea[]> {
     isPinned: row.is_pinned ?? false,
     status: row.status ?? 'active',
     createdAt: row.created_at,
+    questNotes: (row.quest_notes ?? {}) as Record<string, string>,
   }))
 }
 
@@ -159,5 +161,52 @@ export async function deleteProjectIdea(
     .eq('user_id', user.id)
 
   if (error) return { error: '削除に失敗しました。' }
+  return { success: true }
+}
+
+export async function getQuestNotes(
+  projectId: string
+): Promise<Record<string, string>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return {}
+
+  const { data, error } = await supabase
+    .from('project_ideas')
+    .select('quest_notes')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (error || !data) return {}
+  return (data.quest_notes ?? {}) as Record<string, string>
+}
+
+export async function saveQuestNote(
+  projectId: string,
+  questId: string,
+  note: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { data: current } = await supabase
+    .from('project_ideas')
+    .select('quest_notes')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  const notes = (current?.quest_notes ?? {}) as Record<string, string>
+  notes[questId] = note
+
+  const { error } = await supabase
+    .from('project_ideas')
+    .update({ quest_notes: notes })
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'メモの保存に失敗しました。' }
   return { success: true }
 }
