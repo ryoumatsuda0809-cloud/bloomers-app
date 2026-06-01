@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
+import { searchUserKnowledge } from '@/app/actions/user-knowledge'
 
 export type MentorContext = {
   who: string
@@ -129,7 +130,19 @@ export async function sendMentorMessage(
     console.error('[MentorPanel] RAG検索失敗:', err)
   }
 
-  const finalSystemPrompt = systemPrompt + ragSection
+  let userKnowledgeBlock = ''
+  try {
+    const userChunks = await searchUserKnowledge(userMessage)
+    if (userChunks.length > 0) {
+      userKnowledgeBlock = '\n<user_knowledge>\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください。\n' +
+        userChunks.map((c) => c.content).join('\n---\n') +
+        '\n</user_knowledge>'
+    }
+  } catch {
+    // ユーザー資料RAG失敗はメンター応答に影響させない
+  }
+
+  const finalSystemPrompt = systemPrompt + ragSection + userKnowledgeBlock
 
   const contents = [
     ...history.map((m) => ({

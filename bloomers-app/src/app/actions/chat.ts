@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { saveProjectIdea } from '@/app/actions/projects'
 import type { PersonalityData } from '@/app/actions/onboarding'
 import { searchKnowledge } from '@/app/actions/knowledge'
+import { searchUserKnowledge } from '@/app/actions/user-knowledge'
 
 export type ChatMessage = {
   id: string
@@ -180,10 +181,21 @@ ${i + 1}. ${c.trigger}
 他の話題には答えず、このステップの解決に集中してください。
 ` : ''
 
+  let userKnowledgeBlock = ''
+  try {
+    const userChunks = await searchUserKnowledge(userMessage)
+    if (userChunks.length > 0) {
+      userKnowledgeBlock = '\n\n【あなたが追加した資料】\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください：\n' +
+        userChunks.map((c) => `- ${c.content}`).join('\n')
+    }
+  } catch {
+    // ユーザー資料RAG失敗はメンター応答に影響させない
+  }
+
   const isDiscover = !!discoverModeGenre
   const genreLabel = typeof discoverModeGenre === 'string' ? discoverModeGenre : ''
   const systemPrompt = isDiscover
-    ? buildDiscoverSystemPrompt(genreLabel)
+    ? buildDiscoverSystemPrompt(genreLabel) + userKnowledgeBlock
     : `${knowledgeContext}${questContextPrompt}
 あなたはBloomerというサービスの優しいメンターです。
 初心者の若者・大学生が「作りたいもの」を見つけるお手伝いをします。
@@ -223,7 +235,7 @@ ${personality ? `
 【返答の良い例・悪い例】
 Q: 大学生が開発で挫折する理由は？
 悪い例: 挫折の理由には様々なものがあります。1.環境構築の難しさ 2.エラーへの対処 3.モチベーション維持...（長い箇条書き）
-良い例: 一番の理由は「次に何をすればいいか分からなくなること」だよ。選択肢が多いほど人は動けなくなる。だからBloomerは「今日やること1つだけ」を提示するんだ。`
+良い例: 一番の理由は「次に何をすればいいか分からなくなること」だよ。選択肢が多いほど人は動けなくなる。だからBloomerは「今日やること1つだけ」を提示するんだ。` + userKnowledgeBlock
 
   const contents = [
     ...history.map((m) => ({

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
+import { searchUserKnowledge } from '@/app/actions/user-knowledge'
 
 export type MentorMode = 'idea' | 'dev' | 'general'
 
@@ -183,7 +184,19 @@ ${knowledgeText}
     // RAG失敗は無視
   }
 
-  const systemPrompt = buildMentorSystemPrompt(mentorMode) + ragSection
+  let userKnowledgeBlock = ''
+  try {
+    const userChunks = await searchUserKnowledge(userMessage)
+    if (userChunks.length > 0) {
+      userKnowledgeBlock = '\n<user_knowledge>\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください。\n' +
+        userChunks.map((c) => c.content).join('\n---\n') +
+        '\n</user_knowledge>'
+    }
+  } catch {
+    // ユーザー資料RAG失敗はメンター応答に影響させない
+  }
+
+  const systemPrompt = buildMentorSystemPrompt(mentorMode) + ragSection + userKnowledgeBlock
 
   const latestParts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = []
   if (attachment) {
