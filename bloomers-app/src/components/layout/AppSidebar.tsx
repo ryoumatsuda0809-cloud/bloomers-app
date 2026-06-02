@@ -3,8 +3,9 @@
 import { useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSidebar } from '@/components/providers/SidebarProvider'
+import { SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from '@/components/providers/SidebarProvider'
 import { useQuestStore } from '@/store/useQuestStore'
-import { Map, FolderKanban, MessageCircle, User, NotebookPen } from 'lucide-react'
+import { Map, FolderKanban, MessageCircle, User, NotebookPen, GripVertical } from 'lucide-react'
 
 type AppSidebarProps = {
   showRoadmap?: boolean
@@ -19,12 +20,16 @@ const NAV_ITEMS = [
 
 const PROFILE_ITEM = { href: '/profile', label: 'プロフィール', icon: User }
 
+// デスクトップ判定（1280px以上）
+const isDesktop = () => typeof window !== 'undefined' && window.innerWidth >= 1280
+
 export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isOpen, width, close, open, setWidth } = useSidebar()
+  const { isOpen, width, close, open, setWidth, resetWidth } = useSidebar()
   const quests = useQuestStore((state) => state.quests)
-  const draggingRef = useRef(false)
+  // ドラッグ中に実際に移動したかどうかを追跡（クリックとドラッグを区別）
+  const hasMovedRef = useRef(false)
 
   const handleNavClick = (href: string) => {
     router.push(href)
@@ -34,23 +39,35 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
   }
 
   const startDrag = useCallback((e: React.MouseEvent) => {
+    // スマホ・タブレットではドラッグ無効
+    if (!isDesktop()) return
+
     e.preventDefault()
-    draggingRef.current = true
+    hasMovedRef.current = false
     document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
 
     const onMove = (ev: MouseEvent) => {
-      if (!draggingRef.current) return
-      setWidth(ev.clientX)
+      hasMovedRef.current = true
+      const clamped = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, ev.clientX))
+      setWidth(clamped)
     }
+
     const onUp = () => {
-      draggingRef.current = false
+      // 移動なし（クリックのみ）→ デフォルト幅280pxにリセット
+      if (!hasMovedRef.current) {
+        resetWidth()
+      }
+      hasMovedRef.current = false
       document.body.style.userSelect = ''
+      document.body.style.cursor = ''
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
+
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [setWidth])
+  }, [setWidth, resetWidth])
 
   const canShowRoadmapDetail = showRoadmap && quests.length > 0
 
@@ -188,12 +205,18 @@ export default function AppSidebar({ showRoadmap = false }: AppSidebarProps) {
           </button>
         </div>
 
-        {/* ドラッグハンドル（デスクトップのみ・右端絶対配置） */}
+        {/* ドラッグハンドル（デスクトップのみ・右端絶対配置）
+            - ドラッグ: 240〜400px で幅変更
+            - クリック（移動なし）: デフォルト280pxにリセット */}
         <div
           onMouseDown={startDrag}
-          className="hidden lg:block absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors"
+          title="ドラッグで幅変更 / クリックでリセット"
+          className="hidden xl:flex absolute top-0 right-0 w-3 h-full cursor-col-resize items-center justify-center group"
           aria-hidden="true"
-        />
+        >
+          <div className="w-0.5 h-8 rounded-full bg-border group-hover:bg-primary/40 group-active:bg-primary/60 transition-colors" />
+          <GripVertical className="absolute size-3 text-muted-foreground/40 group-hover:text-primary/50 transition-colors" />
+        </div>
       </aside>
     </>
   )
