@@ -542,14 +542,14 @@ export default function MentorPage() {
             {(['idea', 'dev', 'general'] as MentorMode[]).map((mode) => {
               const Icon = MODE_LABELS[mode].icon
               return (
-                <AlertDialogAction
+                <button
                   key={mode}
                   onClick={() => handleCreateConv(mode)}
-                  className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+                  className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3 transition-colors"
                 >
                   <Icon className="size-5" />
                   <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
-                </AlertDialogAction>
+                </button>
               )
             })}
             {customMentors.length > 0 && (
@@ -557,25 +557,25 @@ export default function MentorPage() {
                 <div className="border-t border-border my-1" />
                 <p className="text-xs font-semibold text-muted-foreground px-1">マイメンター</p>
                 {customMentors.map((m) => (
-                  <AlertDialogAction
+                  <button
                     key={m.id}
                     onClick={() => handleCreateCustomConv(m.id)}
-                    className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+                    className="w-full h-auto py-3.5 px-4 bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3 transition-colors"
                   >
                     <Bot className="size-5" />
                     <span className="font-medium text-sm">{m.name}</span>
-                  </AlertDialogAction>
+                  </button>
                 ))}
               </>
             )}
             <div className="border-t border-border my-1" />
-            <AlertDialogAction
+            <button
               onClick={() => { setShowModeDialog(false); router.push('/mentor/custom') }}
-              className="w-full h-auto py-2.5 px-4 bg-transparent border border-dashed border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3"
+              className="w-full h-auto py-2.5 px-4 bg-transparent border border-dashed border-border hover:border-primary hover:bg-accent/20 text-foreground rounded-xl text-left flex items-center gap-3 transition-colors"
             >
               <Settings className="size-4" />
               <span className="text-sm">カスタムメンターを管理</span>
-            </AlertDialogAction>
+            </button>
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -594,10 +594,10 @@ export default function MentorPage() {
             {(['idea', 'dev', 'general'] as MentorMode[]).map((mode) => {
               const Icon = MODE_LABELS[mode].icon
               return (
-                <AlertDialogAction
+                <button
                   key={mode}
                   onClick={() => handleChangeMode(mode)}
-                  className={`w-full h-auto py-3.5 px-4 rounded-xl text-left flex items-center gap-3 ${
+                  className={`w-full h-auto py-3.5 px-4 rounded-xl text-left flex items-center gap-3 transition-colors ${
                     activeMode === mode
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground'
@@ -605,7 +605,7 @@ export default function MentorPage() {
                 >
                   <Icon className="size-5" />
                   <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
-                </AlertDialogAction>
+                </button>
               )
             })}
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
