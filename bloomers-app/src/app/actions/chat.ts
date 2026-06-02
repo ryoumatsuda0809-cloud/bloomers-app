@@ -183,7 +183,10 @@ ${i + 1}. ${c.trigger}
 
   let userKnowledgeBlock = ''
   try {
-    const userChunks = await searchUserKnowledge(userMessage)
+    const userChunks = await searchUserKnowledge(userMessage, {
+      projectId: projectId ?? undefined,
+      isCustom: false,
+    })
     if (userChunks.length > 0) {
       userKnowledgeBlock = '\n\n【あなたが追加した資料】\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください：\n' +
         userChunks.map((c) => `- ${c.content}`).join('\n')

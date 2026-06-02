@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { getProjectIdeas, saveQuestNote } from '@/app/actions/projects'
 import type { ProjectIdea } from '@/app/actions/projects'
-import { addUserKnowledge, listUserKnowledge, deleteUserKnowledge } from '@/app/actions/user-knowledge'
-import type { UserKnowledgeItem } from '@/app/actions/user-knowledge'
+import { addUserKnowledge, listUserKnowledge, deleteUserKnowledge, updateUserKnowledgeScope } from '@/app/actions/user-knowledge'
+import type { UserKnowledgeItem, KnowledgeScope } from '@/app/actions/user-knowledge'
+import { getCustomMentors } from '@/app/actions/custom-mentors'
+import type { CustomMentor } from '@/app/actions/custom-mentors'
 import AppShell from '@/components/layout/AppShell'
 import { QUEST_CONFIG } from '@/lib/quest-utils'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronRight, NotebookPen, Paperclip, Trash2, Plus } from 'lucide-react'
+import { ChevronRight, NotebookPen, Paperclip, Trash2, Plus, Pencil, X } from 'lucide-react'
 
 const QUEST_ORDER = ['q1', 'q2', 'q3', 'q4', 'q5'] as const
 
@@ -24,6 +26,110 @@ function getOrderedNotes(notes: Record<string, string>): { questId: string; titl
 
 const noteKey = (projectId: string, questId: string) => `${projectId}:${questId}`
 
+const SCOPE_LABEL: Record<KnowledgeScope, string> = {
+  global: '全体',
+  project: 'プロジェクト',
+  mentor: 'メンター',
+}
+
+type PendingFile = { mimeType: string; base64: string; name: string }
+
+type ScopeFormState = {
+  scope: KnowledgeScope
+  mentorId: string
+}
+
+function ScopeSelector({
+  value,
+  onChange,
+  activeProject,
+  customMentors,
+}: {
+  value: ScopeFormState
+  onChange: (v: ScopeFormState) => void
+  activeProject: ProjectIdea | null
+  customMentors: CustomMentor[]
+}) {
+  return (
+    <div className="space-y-2">
+      {/* このプロジェクトだけ */}
+      <label className="block border border-border rounded-xl p-3 cursor-pointer hover:border-primary transition-colors">
+        <div className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={value.scope === 'project'}
+            onChange={() => onChange({ ...value, scope: 'project' })}
+            className="accent-primary"
+          />
+          <span className="text-sm font-medium text-foreground">このプロジェクトだけ</span>
+          {activeProject && (
+            <span className="text-xs text-muted-foreground truncate">（{activeProject.title}）</span>
+          )}
+        </div>
+        <div className="mt-1 ml-6 space-y-0.5">
+          <p className="text-xs text-foreground">◎ そのアプリの相談に集中できて、回答が正確</p>
+          <p className="text-xs text-muted-foreground">△ 他のプロジェクトでは使われません</p>
+          <p className="text-xs text-muted-foreground">例：このアプリの要件・仕様書</p>
+        </div>
+      </label>
+
+      {/* このメンターだけ */}
+      <label className="block border border-border rounded-xl p-3 cursor-pointer hover:border-primary transition-colors">
+        <div className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={value.scope === 'mentor'}
+            onChange={() => onChange({ ...value, scope: 'mentor' })}
+            className="accent-primary"
+          />
+          <span className="text-sm font-medium text-foreground">このメンターだけ</span>
+        </div>
+        <div className="mt-1 ml-6 space-y-0.5">
+          <p className="text-xs text-foreground">◎ 専門メンターの精度が一番上がる</p>
+          <p className="text-xs text-muted-foreground">△ そのメンター以外では使われません</p>
+          <p className="text-xs text-muted-foreground">例：マーケの資料 →「マーケ先生」専用</p>
+        </div>
+        {value.scope === 'mentor' && (
+          <div className="mt-2 ml-6">
+            {customMentors.length === 0 ? (
+              <p className="text-xs text-muted-foreground">カスタムメンターがいません。先に作成してください。</p>
+            ) : (
+              <select
+                value={value.mentorId}
+                onChange={(e) => onChange({ ...value, mentorId: e.target.value })}
+                className="w-full border border-border rounded-lg px-2 py-1.5 text-sm bg-background text-foreground"
+              >
+                <option value="">メンターを選択...</option>
+                {customMentors.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+      </label>
+
+      {/* 全体で使う */}
+      <label className="block border border-border rounded-xl p-3 cursor-pointer hover:border-primary transition-colors">
+        <div className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={value.scope === 'global'}
+            onChange={() => onChange({ ...value, scope: 'global' })}
+            className="accent-primary"
+          />
+          <span className="text-sm font-medium text-foreground">全体で使う</span>
+        </div>
+        <div className="mt-1 ml-6 space-y-0.5">
+          <p className="text-xs text-foreground">◎ どのメンターでも見てくれて便利</p>
+          <p className="text-xs text-muted-foreground">△ 関係ない相談のときも出てくることがあります</p>
+          <p className="text-xs text-muted-foreground">例：自分の開発メモ、よく使う技術</p>
+        </div>
+      </label>
+    </div>
+  )
+}
+
 export default function NotesPage() {
   const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -36,6 +142,16 @@ export default function NotesPage() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [uploadMessage, setUploadMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // スコープ選択UI用state
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null)
+  const [scopeForm, setScopeForm] = useState<ScopeFormState>({ scope: 'project', mentorId: '' })
+  const [customMentors, setCustomMentors] = useState<CustomMentor[]>([])
+
+  // 後変更UI用state
+  const [changingScopeFor, setChangingScopeFor] = useState<string | null>(null)
+  const [changeScopeForm, setChangeScopeForm] = useState<ScopeFormState>({ scope: 'project', mentorId: '' })
+  const [changeScopeStatus, setChangeScopeStatus] = useState<'idle' | 'saving'>('idle')
 
   useEffect(() => {
     getProjectIdeas()
@@ -53,7 +169,10 @@ export default function NotesPage() {
       .finally(() => setIsLoading(false))
 
     listUserKnowledge().then(setKnowledgeItems).catch(() => {})
+    getCustomMentors().then(setCustomMentors).catch(() => {})
   }, [])
+
+  const activeProject = projects.find((p) => p.isActive) ?? null
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -81,6 +200,7 @@ export default function NotesPage() {
     }, 800)
   }
 
+  // ファイル選択 → pendingFileにセットしてスコープ選択UIを表示
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -88,6 +208,7 @@ export default function NotesPage() {
     if (file.size > 7 * 1024 * 1024) {
       setUploadStatus('error')
       setUploadMessage('ファイルサイズが7MBを超えています。')
+      if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
 
@@ -98,11 +219,9 @@ export default function NotesPage() {
     if (!allowed.includes(mimeType)) {
       setUploadStatus('error')
       setUploadMessage('対応形式は png / jpg / pdf / txt / md です。')
+      if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
-
-    setUploadStatus('uploading')
-    setUploadMessage('資料を読み込んでいます...')
 
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -115,7 +234,50 @@ export default function NotesPage() {
         reader.readAsDataURL(file)
       })
 
-      const result = await addUserKnowledge(mimeType, base64, file.name)
+      setPendingFile({ mimeType, base64, name: file.name })
+      setScopeForm({ scope: 'project', mentorId: '' })
+      setUploadStatus('idle')
+      setUploadMessage('')
+    } catch {
+      setUploadStatus('error')
+      setUploadMessage('ファイルの読み込みに失敗しました。')
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleConfirmUpload = async () => {
+    if (!pendingFile) return
+
+    let scopeTargetId: string | null = null
+    if (scopeForm.scope === 'project') {
+      if (!activeProject) {
+        setUploadStatus('error')
+        setUploadMessage('進行中のプロジェクトがありません。「全体で使う」を選んでください。')
+        return
+      }
+      scopeTargetId = activeProject.id
+    }
+    if (scopeForm.scope === 'mentor') {
+      if (!scopeForm.mentorId) {
+        setUploadStatus('error')
+        setUploadMessage('メンターを選んでください。')
+        return
+      }
+      scopeTargetId = scopeForm.mentorId
+    }
+
+    setUploadStatus('uploading')
+    setUploadMessage('資料を読み込んでいます...')
+
+    try {
+      const result = await addUserKnowledge(
+        pendingFile.mimeType,
+        pendingFile.base64,
+        pendingFile.name,
+        scopeForm.scope,
+        scopeTargetId
+      )
       if (result.error) {
         setUploadStatus('error')
         setUploadMessage(result.error)
@@ -124,13 +286,12 @@ export default function NotesPage() {
         setUploadMessage(`資料を追加しました（${result.chunkCount}件のチャンク）`)
         const items = await listUserKnowledge()
         setKnowledgeItems(items)
+        setPendingFile(null)
         setTimeout(() => { setUploadStatus('idle'); setUploadMessage('') }, 3000)
       }
     } catch {
       setUploadStatus('error')
       setUploadMessage('資料の追加に失敗しました。')
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -139,6 +300,41 @@ export default function NotesPage() {
     if (!result.error) {
       setKnowledgeItems((prev) => prev.filter((k) => k.source !== source))
     }
+  }
+
+  const handleStartScopeChange = (item: UserKnowledgeItem) => {
+    setChangingScopeFor(item.source)
+    setChangeScopeForm({
+      scope: item.scope,
+      mentorId: item.scope === 'mentor' ? (item.scopeTargetId ?? '') : '',
+    })
+    setChangeScopeStatus('idle')
+  }
+
+  const handleConfirmScopeChange = async () => {
+    if (!changingScopeFor) return
+
+    let scopeTargetId: string | null = null
+    if (changeScopeForm.scope === 'project') {
+      if (!activeProject) {
+        setChangeScopeStatus('idle')
+        return
+      }
+      scopeTargetId = activeProject.id
+    }
+    if (changeScopeForm.scope === 'mentor') {
+      if (!changeScopeForm.mentorId) return
+      scopeTargetId = changeScopeForm.mentorId
+    }
+
+    setChangeScopeStatus('saving')
+    const result = await updateUserKnowledgeScope(changingScopeFor, changeScopeForm.scope, scopeTargetId)
+    if (!result.error) {
+      const items = await listUserKnowledge()
+      setKnowledgeItems(items)
+      setChangingScopeFor(null)
+    }
+    setChangeScopeStatus('idle')
   }
 
   const activeProjects = projects.filter((p) => p.status === 'active')
@@ -177,7 +373,7 @@ export default function NotesPage() {
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadStatus === 'uploading'}
+                disabled={uploadStatus === 'uploading' || pendingFile !== null}
                 className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
               >
                 <Plus className="size-3.5" />
@@ -192,7 +388,43 @@ export default function NotesPage() {
               />
             </div>
 
-            {uploadMessage && (
+            {/* スコープ選択UI（pendingFileがある時に表示） */}
+            {pendingFile && (
+              <div className="border border-border rounded-xl p-4 space-y-3 bg-background">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">この資料をどこで使いますか？</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{pendingFile.name}</p>
+                </div>
+                <ScopeSelector
+                  value={scopeForm}
+                  onChange={setScopeForm}
+                  activeProject={activeProject}
+                  customMentors={customMentors}
+                />
+                {uploadMessage && (
+                  <p className={`text-xs ${uploadStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {uploadMessage}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleConfirmUpload}
+                    disabled={uploadStatus === 'uploading'}
+                    className="flex-1 text-sm py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
+                  >
+                    {uploadStatus === 'uploading' ? '追加中...' : 'この設定で追加'}
+                  </button>
+                  <button
+                    onClick={() => { setPendingFile(null); setUploadStatus('idle'); setUploadMessage('') }}
+                    className="px-4 text-sm py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted transition"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {uploadMessage && !pendingFile && (
               <p className={`text-xs ${uploadStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {uploadMessage}
               </p>
@@ -205,20 +437,64 @@ export default function NotesPage() {
             ) : (
               <div className="space-y-1.5">
                 {knowledgeItems.map((item) => (
-                  <div key={item.source} className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border border-border">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{item.source}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString('ja-JP')}・{item.chunkCount}件
-                      </p>
+                  <div key={item.source}>
+                    <div className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border border-border">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{item.source}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[11px] text-muted-foreground">
+                            {new Date(item.createdAt).toLocaleDateString('ja-JP')}・{item.chunkCount}件
+                          </p>
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {SCOPE_LABEL[item.scope]}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          onClick={() => handleStartScopeChange(item)}
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                          aria-label="スコープ変更"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteKnowledge(item.source)}
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                          aria-label="削除"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteKnowledge(item.source)}
-                      className="shrink-0 ml-2 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
-                      aria-label="削除"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+
+                    {/* スコープ後変更UI */}
+                    {changingScopeFor === item.source && (
+                      <div className="border border-border rounded-xl p-4 space-y-3 bg-background mt-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">スコープを変更</p>
+                          <button
+                            onClick={() => setChangingScopeFor(null)}
+                            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:bg-muted transition"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                        <ScopeSelector
+                          value={changeScopeForm}
+                          onChange={setChangeScopeForm}
+                          activeProject={activeProject}
+                          customMentors={customMentors}
+                        />
+                        <button
+                          onClick={handleConfirmScopeChange}
+                          disabled={changeScopeStatus === 'saving'}
+                          className="w-full text-sm py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
+                        >
+                          {changeScopeStatus === 'saving' ? '変更中...' : '変更を保存'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

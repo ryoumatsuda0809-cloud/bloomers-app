@@ -132,7 +132,9 @@ export async function sendMentorMessage(
 
   let userKnowledgeBlock = ''
   try {
-    const userChunks = await searchUserKnowledge(userMessage)
+    const userChunks = await searchUserKnowledge(userMessage, {
+      isCustom: false,
+    })
     if (userChunks.length > 0) {
       userKnowledgeBlock = '\n<user_knowledge>\n以下はユーザー自身がアップロードした資料です。回答時に積極的に参照してください。\n' +
         userChunks.map((c) => c.content).join('\n---\n') +

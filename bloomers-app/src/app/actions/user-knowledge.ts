@@ -5,16 +5,30 @@ import { createClient } from '@/lib/supabase/server'
 const EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent'
 const GEN_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent'
 
+export type KnowledgeScope = 'global' | 'project' | 'mentor'
+
 export type UserKnowledgeItem = {
   source: string
   createdAt: string
   chunkCount: number
+  scope: KnowledgeScope
+  scopeTargetId: string | null
 }
 
 export type UserKnowledgeResult = {
+  id: string
   content: string
   source: string | null
+  scope: KnowledgeScope
+  scopeTargetId: string | null
   similarity: number
+}
+
+export type SearchScopeOptions = {
+  sourceFilter?: string[]
+  projectId?: string
+  customMentorId?: string
+  isCustom?: boolean
 }
 
 async function embed(text: string): Promise<number[] | null> {
@@ -86,7 +100,9 @@ function chunkText(text: string, size = 800, overlap = 100): string[] {
 export async function addUserKnowledge(
   mimeType: string,
   base64: string,
-  source: string
+  source: string,
+  scope: KnowledgeScope = 'global',
+  scopeTargetId: string | null = null
 ): Promise<{ success?: boolean; error?: string; chunkCount?: number }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -107,7 +123,7 @@ export async function addUserKnowledge(
     return { error: '資料の内容が空でした。' }
   }
 
-  const rows: { user_id: string; content: string; embedding: string; source: string }[] = []
+  const rows: { user_id: string; content: string; embedding: string; source: string; scope: KnowledgeScope; scope_target_id: string | null }[] = []
   for (const chunk of chunks) {
     const vec = await embed(chunk)
     if (!vec) continue
@@ -116,6 +132,8 @@ export async function addUserKnowledge(
       content: chunk,
       embedding: `[${vec.join(',')}]`,
       source,
+      scope,
+      scope_target_id: scopeTargetId,
     })
   }
 
@@ -131,7 +149,7 @@ export async function addUserKnowledge(
 
 export async function searchUserKnowledge(
   query: string,
-  sourceFilter?: string[]
+  options?: SearchScopeOptions
 ): Promise<UserKnowledgeResult[]> {
   try {
     const supabase = await createClient()
@@ -144,15 +162,61 @@ export async function searchUserKnowledge(
     const { data, error } = await supabase.rpc('match_user_knowledge_chunks', {
       query_embedding: `[${vec.join(',')}]`,
       p_user_id: user.id,
-      match_count: 5,
+      match_count: 10,
       match_threshold: 0.0,
     })
     if (error || !data) return []
 
-    let results = data as UserKnowledgeResult[]
-    if (sourceFilter && sourceFilter.length > 0) {
-      results = results.filter((r) => r.source && sourceFilter.includes(r.source))
+    type RawRow = { id: string; content: string; source: string | null; scope: string | null; scope_target_id: string | null; similarity: number }
+    const rawData = data as RawRow[]
+
+    // アクティブプロジェクトIDを決定（渡されていなければ内部取得）
+    let activeProjectId = options?.projectId
+    if (!activeProjectId) {
+      const { data: proj } = await supabase
+        .from('project_ideas')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single()
+      activeProjectId = proj?.id ?? undefined
     }
+
+    // スコープフィルタ（JS側）
+    const toResult = (r: RawRow): UserKnowledgeResult => ({
+      id: r.id,
+      content: r.content,
+      source: r.source,
+      scope: (r.scope ?? 'global') as KnowledgeScope,
+      scopeTargetId: r.scope_target_id ?? null,
+      similarity: r.similarity,
+    })
+
+    let results: UserKnowledgeResult[] = rawData
+      .map(toResult)
+      .filter((r) => {
+        if (r.scope === 'global') return true
+        if (r.scope === 'project') {
+          return activeProjectId != null && r.scopeTargetId === activeProjectId
+        }
+        if (r.scope === 'mentor') {
+          return options?.isCustom === true
+            && options?.customMentorId != null
+            && r.scopeTargetId === options.customMentorId
+        }
+        return false
+      })
+
+    // sourceFilter（linked_knowledge_ids）に含まれる資料はスコープ絞り込みを超えて参照対象に追加
+    if (options?.sourceFilter && options.sourceFilter.length > 0) {
+      const includedIds = new Set(results.map((x) => x.id))
+      const bySource = rawData
+        .filter((r) => r.source && options.sourceFilter!.includes(r.source) && !includedIds.has(r.id))
+        .map(toResult)
+      results = [...results, ...bySource]
+    }
+
+    results.sort((a, b) => b.similarity - a.similarity)
     return results.slice(0, 3)
   } catch {
     return []
@@ -166,20 +230,26 @@ export async function listUserKnowledge(): Promise<UserKnowledgeItem[]> {
 
   const { data, error } = await supabase
     .from('user_knowledge_chunks')
-    .select('source, created_at')
+    .select('source, created_at, scope, scope_target_id')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   if (error || !data) return []
 
-  const map = new Map<string, { source: string; createdAt: string; chunkCount: number }>()
-  for (const row of data as { source: string | null; created_at: string }[]) {
+  const map = new Map<string, UserKnowledgeItem>()
+  for (const row of data as { source: string | null; created_at: string; scope: string | null; scope_target_id: string | null }[]) {
     const key = row.source ?? '(無題)'
     const existing = map.get(key)
     if (existing) {
       existing.chunkCount += 1
     } else {
-      map.set(key, { source: key, createdAt: row.created_at, chunkCount: 1 })
+      map.set(key, {
+        source: key,
+        createdAt: row.created_at,
+        chunkCount: 1,
+        scope: (row.scope ?? 'global') as KnowledgeScope,
+        scopeTargetId: row.scope_target_id ?? null,
+      })
     }
   }
   return Array.from(map.values())
@@ -197,5 +267,24 @@ export async function deleteUserKnowledge(source: string): Promise<{ success?: b
     .eq('source', source)
 
   if (error) return { error: '資料の削除に失敗しました。' }
+  return { success: true }
+}
+
+export async function updateUserKnowledgeScope(
+  source: string,
+  scope: KnowledgeScope,
+  scopeTargetId: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('user_knowledge_chunks')
+    .update({ scope, scope_target_id: scopeTargetId })
+    .eq('user_id', user.id)
+    .eq('source', source)
+
+  if (error) return { error: 'スコープの変更に失敗しました。' }
   return { success: true }
 }
