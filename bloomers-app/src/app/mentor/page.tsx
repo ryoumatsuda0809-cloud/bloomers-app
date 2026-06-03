@@ -38,7 +38,15 @@ import {
   type CustomMentor,
 } from '@/app/actions/custom-mentors'
 
-type UIMessage = { role: 'user' | 'assistant'; content: string }
+type UIMessage = { role: 'user' | 'assistant'; content: string; isGreeting?: boolean }
+
+const LAST_CONV_KEY = 'bloomer_last_conversation_id'
+
+function getGreeting(mode: MentorMode, customMentorName?: string): string {
+  if (mode === 'idea') return 'やあ！どんなアイデアを考えてる？ざっくりでいいから聞かせて 🌸'
+  if (mode === 'custom') return `こんにちは、${customMentorName ?? 'あなたのメンター'}です。何でも話してね 🌸`
+  return 'こんにちは！何でも聞いてください 🌸'
+}
 
 const MODE_LABELS: Record<MentorMode, { icon: LucideIcon; label: string }> = {
   idea:    { icon: Sprout,        label: 'アイデア出し' },
@@ -70,9 +78,34 @@ export default function MentorPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const rememberConv = (id: string) => {
+    try { localStorage.setItem(LAST_CONV_KEY, id) } catch {}
+  }
+
   useEffect(() => {
-    getConversations().then(setConversations).catch(() => {})
-    getCustomMentors().then(setCustomMentors).catch(() => {})
+    Promise.all([
+      getConversations().catch((): Conversation[] => []),
+      getCustomMentors().catch((): CustomMentor[] => []),
+    ]).then(([convs, mentors]) => {
+      setConversations(convs)
+      setCustomMentors(mentors)
+      try {
+        const lastId = localStorage.getItem(LAST_CONV_KEY)
+        if (lastId) {
+          const target = convs.find((c) => c.id === lastId)
+          if (target) {
+            setActiveConvId(target.id)
+            setActiveMode(target.mentorMode)
+            setActiveStyle(target.responseStyle)
+            setActiveCustomMentorId(target.customMentorId)
+            setIsFirstMessage(false)
+            getConversationMessages(target.id)
+              .then((msgs) => setMessages(msgs.map((m) => ({ role: m.role, content: m.content }))))
+              .catch(() => setMessages([]))
+          }
+        }
+      } catch {}
+    })
   }, [])
 
   useEffect(() => {
@@ -93,6 +126,7 @@ export default function MentorPage() {
     setActiveStyle(conv.responseStyle)
     setActiveCustomMentorId(conv.customMentorId)
     setIsFirstMessage(false)
+    rememberConv(conv.id)
     try {
       const msgs = await getConversationMessages(conv.id)
       setMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
@@ -110,7 +144,8 @@ export default function MentorPage() {
     setActiveMode(mode)
     setActiveStyle('light')
     setActiveCustomMentorId(null)
-    setMessages([])
+    rememberConv(conversation.id)
+    setMessages([{ role: 'assistant', content: getGreeting(mode), isGreeting: true }])
     setIsFirstMessage(true)
   }
 
@@ -123,7 +158,9 @@ export default function MentorPage() {
     setActiveMode('custom')
     setActiveStyle('light')
     setActiveCustomMentorId(customMentorId)
-    setMessages([])
+    rememberConv(conversation.id)
+    const mentor = customMentors.find((m) => m.id === customMentorId)
+    setMessages([{ role: 'assistant', content: getGreeting('custom', mentor?.name), isGreeting: true }])
     setIsFirstMessage(true)
   }
 
@@ -137,7 +174,7 @@ export default function MentorPage() {
     setIsLoading(true)
     setMessages((prev) => [...prev, { role: 'user', content: text || '(ファイルを添付しました)' }])
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }))
+    const history = messages.filter((m) => !m.isGreeting).map((m) => ({ role: m.role, content: m.content }))
     const attachArg: Attachment | undefined = currentAttachment
       ? { mimeType: currentAttachment.mimeType, data: currentAttachment.data }
       : undefined
@@ -219,6 +256,9 @@ export default function MentorPage() {
       setActiveConvId(null)
       setMessages([])
     }
+    try {
+      if (localStorage.getItem(LAST_CONV_KEY) === target.id) localStorage.removeItem(LAST_CONV_KEY)
+    } catch {}
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
