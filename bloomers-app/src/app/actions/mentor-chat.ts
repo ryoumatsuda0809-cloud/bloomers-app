@@ -5,7 +5,8 @@ import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
 import { getCustomMentor } from '@/app/actions/custom-mentors'
 
-export type MentorMode = 'idea' | 'dev' | 'general' | 'custom'
+export type MentorMode = 'idea' | 'general' | 'custom'
+export type ResponseStyle = 'light' | 'deep'
 
 export type Conversation = {
   id: string
@@ -15,6 +16,7 @@ export type Conversation = {
   isPinned: boolean
   createdAt: string
   updatedAt: string
+  responseStyle: ResponseStyle
 }
 
 export type ConvMessage = {
@@ -29,33 +31,32 @@ export type Attachment = {
   data: string
 }
 
-function buildMentorSystemPrompt(mode: MentorMode): string {
+function buildMentorSystemPrompt(mode: MentorMode, style: ResponseStyle = 'light'): string {
   const base = `あなたはBloomerのメンターです。
 技術用語を使わず友達のような口調で話してください。
-1回の返答は3文以内。答えから直接書き始めてください。
 同じ質問を繰り返さないでください。`
 
+  let roleBlock: string
   if (mode === 'idea') {
-    return `${base}
+    roleBlock = `${base}
 
 【役割：アイデア出しメンター】
 ユーザーが作りたいものを一緒に見つけ、育てます。
 「誰のために」「何を解決するか」「どうやって実現するか」を引き出してください。
 ユーザーに「わくわく」を感じさせてください。`
-  }
-  if (mode === 'dev') {
-    return `${base}
-
-【役割：問題解決メンター】
-ユーザーが開発で詰まっている問題を解決します。
-詰まっている箇所を選択肢で1つずつ絞り込んでください。
-初心者が安心できるよう、専門用語は噛み砕いて説明してください。`
-  }
-  return `${base}
+  } else {
+    roleBlock = `${base}
 
 【役割：なんでも相談メンター】
 ユーザーのどんな相談にも親身に答えます。
 開発・アイデア・モチベーション、何でも受け止めてください。`
+  }
+
+  const styleBlock = style === 'deep'
+    ? '\n\n【回答スタイル：深掘り】背景・理由・選択肢を含めて、じっくり丁寧に説明してください。複雑な内容でも構いません。'
+    : '\n\n【回答スタイル：ライト】要点を先に、簡潔に。1回の返答は3文以内を目安に、長くしすぎないでください。答えから直接書き始めてください。'
+
+  return roleBlock + styleBlock
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -80,6 +81,7 @@ export async function getConversations(): Promise<Conversation[]> {
     isPinned: row.is_pinned ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    responseStyle: (row.response_style ?? 'light') as ResponseStyle,
   }))
 }
 
@@ -97,6 +99,7 @@ export async function createConversation(
       user_id: user.id,
       mentor_mode: mentorMode,
       custom_mentor_id: customMentorId ?? null,
+      response_style: 'light',
       title: '新規チャット',
     })
     .select()
@@ -113,6 +116,7 @@ export async function createConversation(
       isPinned: data.is_pinned ?? false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      responseStyle: 'light' as ResponseStyle,
     },
   }
 }
@@ -147,7 +151,8 @@ export async function sendMentorChatMessage(
   mentorMode: MentorMode,
   history: { role: 'user' | 'assistant'; content: string }[],
   attachment?: Attachment,
-  customMentorId?: string
+  customMentorId?: string,
+  responseStyle: ResponseStyle = 'light'
 ): Promise<{ reply?: string; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
@@ -185,10 +190,10 @@ export async function sendMentorChatMessage(
       baseSystemPrompt = mentor.systemPrompt
       knowledgeSourceFilter = mentor.linkedKnowledgeIds.length > 0 ? mentor.linkedKnowledgeIds : undefined
     } else {
-      baseSystemPrompt = buildMentorSystemPrompt('general')
+      baseSystemPrompt = buildMentorSystemPrompt('general', responseStyle)
     }
   } else {
-    baseSystemPrompt = buildMentorSystemPrompt(mentorMode)
+    baseSystemPrompt = buildMentorSystemPrompt(mentorMode, responseStyle)
   }
 
   let ragSection = ''
@@ -400,5 +405,23 @@ export async function updateConversationMode(
     .eq('user_id', user.id)
 
   if (error) return { error: 'メンター種類の変更に失敗しました。' }
+  return { success: true }
+}
+
+export async function updateConversationStyle(
+  conversationId: string,
+  style: ResponseStyle
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ response_style: style })
+    .eq('id', conversationId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: 'スタイルの変更に失敗しました。' }
   return { success: true }
 }
