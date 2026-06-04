@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal,
   Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Bot, Settings, ChevronRight,
+  ChevronLeft, GripVertical, PanelLeft,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -41,6 +42,13 @@ import {
 type UIMessage = { role: 'user' | 'assistant'; content: string; isGreeting?: boolean }
 
 const LAST_CONV_KEY = 'bloomer_last_conversation_id'
+const MENTOR_SIDEBAR_WIDTH_KEY = 'bloomer_mentor_sidebar_width'
+const MENTOR_SIDEBAR_OPEN_KEY = 'bloomer_mentor_sidebar_open'
+const SB_MIN = 240
+const SB_DEFAULT = 280
+const SB_MAX = 400
+
+const isDesktop = () => typeof window !== 'undefined' && window.innerWidth >= 1280
 
 function getGreeting(mode: MentorMode, customMentorName?: string): string {
   if (mode === 'idea') return 'やあ！どんなアイデアを考えてる？ざっくりでいいから聞かせて 🌸'
@@ -75,11 +83,76 @@ export default function MentorPage() {
   const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string } | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
   const [showModeChangeDialog, setShowModeChangeDialog] = useState(false)
+  // サイドバー開閉・幅（SSRミスマッチ回避のためデフォルト値で初期化）
+  const [sidebarWidth, setSidebarWidth] = useState(SB_DEFAULT)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const draggingRef = useRef(false)
+  const hasMovedRef = useRef(false)
+  const sidebarWidthRef = useRef(SB_DEFAULT)
+
+  // hydration後にlocalStorageから復元
+  useEffect(() => {
+    try {
+      const w = localStorage.getItem(MENTOR_SIDEBAR_WIDTH_KEY)
+      if (w) {
+        const n = parseInt(w, 10)
+        if (!Number.isNaN(n)) {
+          const clamped = Math.min(SB_MAX, Math.max(SB_MIN, n))
+          setSidebarWidth(clamped)
+          sidebarWidthRef.current = clamped
+        }
+      }
+      const o = localStorage.getItem(MENTOR_SIDEBAR_OPEN_KEY)
+      if (o === 'false') setSidebarOpen(false)
+    } catch {}
+  }, [])
 
   const rememberConv = (id: string) => {
     try { localStorage.setItem(LAST_CONV_KEY, id) } catch {}
+  }
+
+  const persistWidth = (w: number) => { try { localStorage.setItem(MENTOR_SIDEBAR_WIDTH_KEY, String(w)) } catch {} }
+  const persistOpen = (o: boolean) => { try { localStorage.setItem(MENTOR_SIDEBAR_OPEN_KEY, String(o)) } catch {} }
+
+  const updateWidth = (w: number) => {
+    setSidebarWidth(w)
+    sidebarWidthRef.current = w
+  }
+
+  const closeSidebar = () => { setSidebarOpen(false); persistOpen(false) }
+  const openSidebar = () => { setSidebarOpen(true); persistOpen(true) }
+  const resetSidebarWidth = () => { updateWidth(SB_DEFAULT); persistWidth(SB_DEFAULT) }
+
+  // ドラッグ開始：クリックのみ＝リセット、移動あり＝幅変更
+  const startDrag = (e: React.MouseEvent) => {
+    if (!isDesktop()) return
+    e.preventDefault()
+    draggingRef.current = true
+    hasMovedRef.current = false
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return
+      hasMovedRef.current = true
+      updateWidth(Math.min(SB_MAX, Math.max(SB_MIN, ev.clientX)))
+    }
+    const onUp = () => {
+      draggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (hasMovedRef.current) {
+        persistWidth(sidebarWidthRef.current)
+      } else {
+        resetSidebarWidth()
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
 
   useEffect(() => {
@@ -410,82 +483,143 @@ export default function MentorPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      {/* 左：チャット一覧 */}
-      <aside className="w-64 shrink-0 border-r border-border bg-card flex flex-col h-screen">
-        <div className="p-3 border-b border-border space-y-2">
+  // デスクトップ・スマホ両方で使うサイドバー内コンテンツ
+  const renderSidebarContent = () => (
+    <>
+      <div className="p-3 border-b border-border space-y-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => router.push('/')}
-            className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition px-1 py-1"
+            className="flex-1 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition px-1 py-1"
           >
             <ArrowLeft className="size-4" />
             ダッシュボード
           </button>
           <button
-            onClick={() => setShowModeDialog(true)}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 text-sm font-medium hover:bg-primary/90 transition"
+            onClick={closeSidebar}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            aria-label="サイドバーを閉じる"
+            title="サイドバーを閉じる"
           >
-            <Plus className="size-4" />
-            新規チャット
+            <ChevronLeft className="size-4" />
           </button>
         </div>
+        <button
+          onClick={() => setShowModeDialog(true)}
+          className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 text-sm font-medium hover:bg-primary/90 transition"
+        >
+          <Plus className="size-4" />
+          新規チャット
+        </button>
+      </div>
 
-        {/* 種類クイックアクセス */}
-        <div className="px-2 py-2 border-b border-border space-y-0.5">
-          <button
-            onClick={() => handleCreateConv('idea')}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
-          >
-            <Sprout className="size-4 shrink-0" /> アイデア出し
-          </button>
-          <button
-            onClick={() => handleCreateConv('general')}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
-          >
-            <MessageCircle className="size-4 shrink-0" /> なんでも相談
-          </button>
-          <button
-            onClick={() => router.push('/mentor/custom')}
-            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
-          >
-            <span className="flex items-center gap-2"><Bot className="size-4 shrink-0" /> カスタマイズ</span>
-            <ChevronRight className="size-3.5 shrink-0" />
-          </button>
-        </div>
+      {/* 種類クイックアクセス */}
+      <div className="px-2 py-2 border-b border-border space-y-0.5">
+        <button
+          onClick={() => handleCreateConv('idea')}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+        >
+          <Sprout className="size-4 shrink-0" /> アイデア出し
+        </button>
+        <button
+          onClick={() => handleCreateConv('general')}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+        >
+          <MessageCircle className="size-4 shrink-0" /> なんでも相談
+        </button>
+        <button
+          onClick={() => router.push('/mentor/custom')}
+          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+        >
+          <span className="flex items-center gap-2"><Bot className="size-4 shrink-0" /> カスタマイズ</span>
+          <ChevronRight className="size-3.5 shrink-0" />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {conversations.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8 px-2">
-              まだチャットがありません。
-              <br />
-              「新規チャット」から始めましょう。
-            </p>
-          )}
-          {(() => {
-            const pinned = conversations.filter((c) => c.isPinned)
-            const recent = conversations
-              .filter((c) => !c.isPinned)
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-            return (
-              <>
-                {pinned.length > 0 && (
-                  <>
-                    <p className="text-xs font-semibold text-muted-foreground px-2 pt-1 pb-0.5">ピン留め</p>
-                    {pinned.map((conv) => renderConvItem(conv))}
-                  </>
-                )}
-                {recent.length > 0 && (
-                  <>
-                    <p className="text-xs font-semibold text-muted-foreground px-2 pt-2 pb-0.5">最近使った</p>
-                    {recent.map((conv) => renderConvItem(conv))}
-                  </>
-                )}
-              </>
-            )
-          })()}
-        </div>
-      </aside>
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {conversations.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-8 px-2">
+            まだチャットがありません。
+            <br />
+            「新規チャット」から始めましょう。
+          </p>
+        )}
+        {(() => {
+          const pinned = conversations.filter((c) => c.isPinned)
+          const recent = conversations
+            .filter((c) => !c.isPinned)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          return (
+            <>
+              {pinned.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground px-2 pt-1 pb-0.5">ピン留め</p>
+                  {pinned.map((conv) => renderConvItem(conv))}
+                </>
+              )}
+              {recent.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground px-2 pt-2 pb-0.5">最近使った</p>
+                  {recent.map((conv) => renderConvItem(conv))}
+                </>
+              )}
+            </>
+          )
+        })()}
+      </div>
+    </>
+  )
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* デスクトップ(lg+)：開いている時 */}
+      {sidebarOpen && (
+        <aside
+          className="hidden lg:flex shrink-0 border-r border-border bg-card flex-col h-screen relative"
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          {renderSidebarContent()}
+          {/* ドラッグハンドル（xl以上のみ有効） */}
+          <div
+            onMouseDown={startDrag}
+            className="hidden xl:flex absolute top-0 right-0 w-3 h-full cursor-col-resize items-center justify-center group"
+          >
+            <GripVertical className="absolute size-3 text-muted-foreground/40 group-hover:text-primary/50 transition-colors" />
+          </div>
+        </aside>
+      )}
+
+      {/* デスクトップ(lg+)：閉じている時の「開く」ボタン */}
+      {!sidebarOpen && (
+        <button
+          onClick={openSidebar}
+          className="hidden lg:flex fixed top-3 left-3 z-40 w-9 h-9 items-center justify-center rounded-lg bg-card border border-border hover:bg-muted transition"
+          aria-label="サイドバーを開く"
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      )}
+
+      {/* スマホ(lg未満)：オーバーレイ式 */}
+      {sidebarOpen && (
+        <>
+          <div className="lg:hidden fixed inset-0 bg-black/40 z-30" onClick={closeSidebar} />
+          <aside className="lg:hidden fixed top-0 left-0 z-40 w-72 h-screen border-r border-border bg-card flex flex-col">
+            {renderSidebarContent()}
+          </aside>
+        </>
+      )}
+
+      {/* スマホ(lg未満)：閉じている時の「開く」ボタン */}
+      {!sidebarOpen && (
+        <button
+          onClick={openSidebar}
+          className="lg:hidden fixed top-3 left-3 z-40 w-9 h-9 flex items-center justify-center rounded-lg bg-card border border-border hover:bg-muted transition"
+          aria-label="メニュー"
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      )}
 
       {/* 右：会話エリア */}
       <main className="flex-1 flex flex-col h-screen min-w-0">
