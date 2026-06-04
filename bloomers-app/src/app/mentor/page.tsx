@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal,
-  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Bot, Settings,
+  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Bot, Settings, ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -323,6 +323,93 @@ export default function MentorPage() {
     }
   }
 
+  const renderConvItem = (conv: Conversation) => {
+    const ConvIcon = MODE_LABELS[conv.mentorMode].icon
+    return (
+      <div
+        key={conv.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => { if (editingId !== conv.id) handleSelectConv(conv) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' && editingId !== conv.id) handleSelectConv(conv) }}
+        onContextMenu={(e) => openMenu(e, conv.id)}
+        className={`group relative w-full rounded-lg transition cursor-pointer ${
+          activeConvId === conv.id ? 'bg-accent/30' : 'hover:bg-muted'
+        }`}
+      >
+        <div className="px-3 py-2.5 pr-8">
+          <div className="flex items-center gap-1.5">
+            {conv.isPinned && <Pin className="size-3 text-primary shrink-0 fill-primary" />}
+            <ConvIcon className="size-3.5 text-muted-foreground shrink-0" />
+
+            {editingId === conv.id ? (
+              <input
+                autoFocus
+                value={editingTitle}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onBlur={() => commitRename(conv.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitRename(conv.id) }
+                  if (e.key === 'Escape') setEditingId(null)
+                }}
+                className="flex-1 min-w-0 bg-background border border-primary rounded px-1.5 py-0.5 text-sm text-foreground focus:outline-none"
+              />
+            ) : (
+              <span className="text-sm text-foreground truncate">{conv.title}</span>
+            )}
+          </div>
+          {editingId !== conv.id && (
+            <p className="text-xs text-muted-foreground mt-0.5 ml-5">
+              {MODE_LABELS[conv.mentorMode].label}
+            </p>
+          )}
+        </div>
+
+        {/* ⋯ボタン（ホバーで表示） */}
+        {editingId !== conv.id && (
+          <button
+            onClick={(e) => openMenu(e, conv.id)}
+            className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
+            aria-label="メニュー"
+          >
+            <MoreHorizontal className="size-4" />
+          </button>
+        )}
+
+        {/* ポップオーバーメニュー */}
+        {menuOpenId === conv.id && (
+          <div
+            className="absolute top-9 right-1.5 z-50 w-40 bg-card border border-border rounded-xl shadow-lg py-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => startRename(conv)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+            >
+              <Pencil className="size-3.5" />
+              名前を変更
+            </button>
+            <button
+              onClick={() => handlePin(conv)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
+            >
+              <Pin className="size-3.5" />
+              {conv.isPinned ? 'ピン留めを外す' : 'ピン留め'}
+            </button>
+            <button
+              onClick={() => { setMenuOpenId(null); setDeleteTarget(conv) }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition text-left"
+            >
+              <Trash2 className="size-3.5" />
+              削除
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* 左：チャット一覧 */}
@@ -343,6 +430,30 @@ export default function MentorPage() {
             新規チャット
           </button>
         </div>
+
+        {/* 種類クイックアクセス */}
+        <div className="px-2 py-2 border-b border-border space-y-0.5">
+          <button
+            onClick={() => handleCreateConv('idea')}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+          >
+            <Sprout className="size-4 shrink-0" /> アイデア出し
+          </button>
+          <button
+            onClick={() => handleCreateConv('general')}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+          >
+            <MessageCircle className="size-4 shrink-0" /> なんでも相談
+          </button>
+          <button
+            onClick={() => router.push('/mentor/custom')}
+            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm text-left text-muted-foreground hover:bg-muted hover:text-foreground transition"
+          >
+            <span className="flex items-center gap-2"><Bot className="size-4 shrink-0" /> カスタマイズ</span>
+            <ChevronRight className="size-3.5 shrink-0" />
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {conversations.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8 px-2">
@@ -351,92 +462,28 @@ export default function MentorPage() {
               「新規チャット」から始めましょう。
             </p>
           )}
-          {conversations.map((conv) => {
-            const ConvIcon = MODE_LABELS[conv.mentorMode].icon
+          {(() => {
+            const pinned = conversations.filter((c) => c.isPinned)
+            const recent = conversations
+              .filter((c) => !c.isPinned)
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
             return (
-              <div
-                key={conv.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => { if (editingId !== conv.id) handleSelectConv(conv) }}
-                onKeyDown={(e) => { if (e.key === 'Enter' && editingId !== conv.id) handleSelectConv(conv) }}
-                onContextMenu={(e) => openMenu(e, conv.id)}
-                className={`group relative w-full rounded-lg transition cursor-pointer ${
-                  activeConvId === conv.id ? 'bg-accent/30' : 'hover:bg-muted'
-                }`}
-              >
-                <div className="px-3 py-2.5 pr-8">
-                  <div className="flex items-center gap-1.5">
-                    {conv.isPinned && <Pin className="size-3 text-primary shrink-0 fill-primary" />}
-                    <ConvIcon className="size-3.5 text-muted-foreground shrink-0" />
-
-                    {editingId === conv.id ? (
-                      <input
-                        autoFocus
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onBlur={() => commitRename(conv.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') { e.preventDefault(); commitRename(conv.id) }
-                          if (e.key === 'Escape') setEditingId(null)
-                        }}
-                        className="flex-1 min-w-0 bg-background border border-primary rounded px-1.5 py-0.5 text-sm text-foreground focus:outline-none"
-                      />
-                    ) : (
-                      <span className="text-sm text-foreground truncate">{conv.title}</span>
-                    )}
-                  </div>
-                  {editingId !== conv.id && (
-                    <p className="text-xs text-muted-foreground mt-0.5 ml-5">
-                      {MODE_LABELS[conv.mentorMode].label}
-                    </p>
-                  )}
-                </div>
-
-                {/* ⋯ボタン（ホバーで表示） */}
-                {editingId !== conv.id && (
-                  <button
-                    onClick={(e) => openMenu(e, conv.id)}
-                    className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
-                    aria-label="メニュー"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </button>
+              <>
+                {pinned.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground px-2 pt-1 pb-0.5">ピン留め</p>
+                    {pinned.map((conv) => renderConvItem(conv))}
+                  </>
                 )}
-
-                {/* ポップオーバーメニュー */}
-                {menuOpenId === conv.id && (
-                  <div
-                    className="absolute top-9 right-1.5 z-50 w-40 bg-card border border-border rounded-xl shadow-lg py-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => startRename(conv)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
-                    >
-                      <Pencil className="size-3.5" />
-                      名前を変更
-                    </button>
-                    <button
-                      onClick={() => handlePin(conv)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition text-left"
-                    >
-                      <Pin className="size-3.5" />
-                      {conv.isPinned ? 'ピン留めを外す' : 'ピン留め'}
-                    </button>
-                    <button
-                      onClick={() => { setMenuOpenId(null); setDeleteTarget(conv) }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition text-left"
-                    >
-                      <Trash2 className="size-3.5" />
-                      削除
-                    </button>
-                  </div>
+                {recent.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground px-2 pt-2 pb-0.5">最近使った</p>
+                    {recent.map((conv) => renderConvItem(conv))}
+                  </>
                 )}
-              </div>
+              </>
             )
-          })}
+          })()}
         </div>
       </aside>
 
@@ -453,7 +500,8 @@ export default function MentorPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
               {messages.length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-sm text-muted-foreground">何でも聞いてください 🌸</p>
@@ -495,10 +543,11 @@ export default function MentorPage() {
                 </div>
               )}
               <div ref={bottomRef} />
+              </div>
             </div>
 
             <div className="border-t border-border p-3 shrink-0">
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-3xl mx-auto">
                 <div className="flex items-center gap-1 mb-2">
                   <button
                     onClick={() => handleChangeStyle('light')}
