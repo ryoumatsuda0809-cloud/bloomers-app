@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import {
   getSelectedIdea,
   resetOnboarding,
+  updateToneOverride,
 } from '@/app/actions/onboarding'
 import { createClient } from '@/lib/supabase/client'
 import type { PersonalityData, IdeaCard } from '@/app/actions/onboarding'
@@ -40,6 +41,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const [toneOverride, setToneOverride] = useState<'gentle' | 'balanced' | 'strict' | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -49,12 +51,13 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('personality_data, selected_idea')
+        .select('personality_data, selected_idea, tone_override')
         .eq('id', user.id)
         .single()
 
       if (data?.personality_data) setPersonality(data.personality_data)
       if (data?.selected_idea) setSelectedIdea(data.selected_idea)
+      if (data?.tone_override !== undefined) setToneOverride(data.tone_override ?? null)
       const ideas = await getProjectIdeas()
       setProjects(ideas)
       setIsLoading(false)
@@ -98,6 +101,11 @@ export default function ProfilePage() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const handleToneChange = async (tone: 'gentle' | 'balanced' | 'strict' | null) => {
+    setToneOverride(tone)
+    await updateToneOverride(tone)
   }
 
   const handleReset = async () => {
@@ -265,6 +273,33 @@ export default function ProfilePage() {
             </Button>
           </div>
         )}
+
+        {/* メンターの話し方 */}
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="text-sm font-semibold text-foreground">メンターの話し方</p>
+          <p className="text-xs text-muted-foreground">未設定だと、MBTIから自動で決まります。</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { v: null, label: '自動（診断から）' },
+              { v: 'gentle' as const, label: 'やさしい' },
+              { v: 'balanced' as const, label: 'バランス' },
+              { v: 'strict' as const, label: 'ビシッと' },
+            ] as const).map((opt) => (
+              <button
+                key={String(opt.v)}
+                type="button"
+                onClick={() => handleToneChange(opt.v)}
+                className={`text-sm py-2 rounded-lg border transition ${
+                  toneOverride === opt.v
+                    ? 'border-primary bg-accent/30 text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* アイデアを探し直す */}
         <div className="bg-card rounded-2xl border border-border p-5 space-y-3">

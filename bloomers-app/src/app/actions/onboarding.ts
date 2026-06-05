@@ -390,3 +390,17 @@ JSON形式のみで出力（前置き・コードブロック記号なし）：
     return fallback
   }
 }
+
+export async function updateToneOverride(
+  tone: 'gentle' | 'balanced' | 'strict' | null
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+  const { error } = await supabase
+    .from('profiles')
+    .update({ tone_override: tone })
+    .eq('id', user.id)
+  if (error) return { error: 'トーン設定の保存に失敗しました。' }
+  return { success: true }
+}
