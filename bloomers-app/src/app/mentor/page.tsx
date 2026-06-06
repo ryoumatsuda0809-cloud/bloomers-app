@@ -39,7 +39,7 @@ import {
   type CustomMentor,
 } from '@/app/actions/custom-mentors'
 
-type UIMessage = { role: 'user' | 'assistant'; content: string; isGreeting?: boolean }
+type UIMessage = { role: 'user' | 'assistant'; content: string; isGreeting?: boolean; suggestions?: string[] }
 
 const LAST_CONV_KEY = 'bloomer_last_conversation_id'
 const MENTOR_SIDEBAR_WIDTH_KEY = 'bloomer_mentor_sidebar_width'
@@ -237,12 +237,12 @@ export default function MentorPage() {
     setIsFirstMessage(true)
   }
 
-  const handleSend = async () => {
-    const text = input.trim()
+  const handleSend = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim()
     if ((!text && !attachment) || isLoading || !activeConvId) return
 
     const currentAttachment = attachment
-    setInput('')
+    if (overrideText === undefined) setInput('')
     setAttachment(null)
     setIsLoading(true)
     setMessages((prev) => [...prev, { role: 'user', content: text || '(ファイルを添付しました)' }])
@@ -252,7 +252,7 @@ export default function MentorPage() {
       ? { mimeType: currentAttachment.mimeType, data: currentAttachment.data }
       : undefined
 
-    const { reply, error } = await sendMentorChatMessage(
+    const { reply, suggestions, error } = await sendMentorChatMessage(
       activeConvId,
       text || 'このファイルについて教えてください。',
       activeMode,
@@ -264,7 +264,7 @@ export default function MentorPage() {
 
     setMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: error || !reply ? 'メンターに接続できませんでした。' : reply },
+      { role: 'assistant', content: error || !reply ? 'メンターに接続できませんでした。' : reply, suggestions },
     ])
     setIsLoading(false)
 
@@ -642,22 +642,36 @@ export default function MentorPage() {
                 </div>
               )}
               {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {m.role === 'assistant' && (
-                    <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>
-                  )}
-                  <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap max-w-[75%] ${
-                      m.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-br-sm'
-                        : 'bg-muted text-foreground rounded-bl-sm'
-                    }`}
-                  >
-                    {m.content}
+                <div key={i} className="space-y-2">
+                  <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {m.role === 'assistant' && (
+                      <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>
+                    )}
+                    <div
+                      className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap max-w-[75%] ${
+                        m.role === 'user'
+                          ? 'bg-primary text-primary-foreground rounded-br-sm'
+                          : 'bg-muted text-foreground rounded-bl-sm'
+                      }`}
+                    >
+                      {m.content}
+                    </div>
                   </div>
+                  {m.role === 'assistant' && m.suggestions && m.suggestions.length > 0 && activeMode === 'idea' && i === messages.length - 1 && !isLoading && (
+                    <div className="flex flex-wrap gap-2 ml-6">
+                      {m.suggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSend(s)}
+                          disabled={isLoading}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-card hover:border-primary hover:bg-accent/20 text-foreground transition disabled:opacity-50"
+                        >
+                          <span className="text-primary font-semibold">{idx + 1}</span>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
               {isLoading && (
@@ -767,7 +781,7 @@ export default function MentorPage() {
                     className="flex-1 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32 disabled:opacity-50 bg-background"
                   />
                   <button
-                    onClick={handleSend}
+                    onClick={() => handleSend()}
                     disabled={(!input.trim() && !attachment) || isLoading}
                     className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0"
                     aria-label="送信"

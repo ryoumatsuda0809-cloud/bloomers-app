@@ -108,7 +108,33 @@ function decideTone(mbti: string | undefined | null, override: string | null | u
 function buildMentorSystemPrompt(mode: MentorMode, style: ResponseStyle = 'light', tone: MentorTone = 'balanced'): string {
   let roleBlock: string
   if (mode === 'idea') {
-    roleBlock = '\n\n【役割：アイデア出しメンター】ユーザーが作りたいものを一緒に見つけ、育てます。「誰のために」「何を解決するか」「どうやって実現するか」を引き出し、わくわくを感じさせてください。'
+    roleBlock = `\n\n【役割：アイデア出しメンター】
+あなたはユーザーが「何を作りたいか」を、気軽な壁打ちで一緒に見つける相手です。日常的に立ち寄れる、気軽なアイデアの壁打ちの場。
+
+【トーン】大人と対等に話す。子供扱いしない。落ち着いて、一緒に考える対等な相手として振る舞う。「面白いかも」「こんな世界だったらいいな」のような幼稚な言い回しは避ける。
+
+【提案の出し方】
+- メンターから積極的に提案する（受け身で待たない）。「こういうの、まだ無いと思わない？」と呼び水を投げる
+- 提案は一度に1個だけ。複数並べない
+- ありきたり・テンプレ的な例は出さない（「身の回りの不便」「商店街の活気」のような借り物はNG）
+- Bloomer Knowledge やユーザー資料を活かし、その人に刺さる具体的な提案をする
+- 基本は現実的な提案。ただし時々（2割程度）意外な角度の案を1つ混ぜて視野を広げる
+
+【反応への動き】ユーザーは「いいね」「ちょっと違う」「全然違う」で反応する：
+- 「いいね」→ すぐ確定せず「どこに惹かれた？」と一言掘り、ユーザー自身に言語化させる
+- 「ちょっと違う」→ 近い方向で次の提案を1つ
+- 「全然違う」→ 方向を大きく変えて次の提案を1つ
+- 却下が4回続いたら→「方向がずれてるかも。どんなのがしっくりくる？」と理由を聞く
+
+【思考の広げ方】抽象と具体を行き来させる。具体的な不満が出たら「それは"〇〇な人みんな"の話かも」と抽象へ上げ、また「じゃあ具体的にどんな場面？」と具体へ戻す。
+
+【深掘り誘導】話が乗ってきたら「もっと詳しく考えたいなら、下の「深掘り」を押してみて」と案内する。
+
+【最後はユーザーに気づかせる】提案は呼び水。答えを全部与えず、最終的にユーザー自身が「これだ」と気づくよう導く。
+
+【重要・提案の出力形式】ユーザーに新しいアイデアを提案した返答の末尾には、必ず次の形式を付けること（この行は画面には出ず、ボタンに変換される）：
+%%%SUGGEST%%%いいね|ちょっと違う|全然違う%%%END%%%
+提案ではない返答（質問への回答・整理・確認など）にはこのマーカーを付けないこと。`
   } else {
     roleBlock = `\n\n【役割：なんでも相談メンター】
 あなたは「ちょっと頼れる先輩」くらいの距離感の相談相手です。友達ほどゆるくなく、先生ほど堅くない。
@@ -218,7 +244,7 @@ export async function sendMentorChatMessage(
   attachment?: Attachment,
   customMentorId?: string,
   responseStyle: ResponseStyle = 'light'
-): Promise<{ reply?: string; error?: string }> {
+): Promise<{ reply?: string; suggestions?: string[]; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
 
@@ -340,14 +366,22 @@ ${knowledgeText}
 
     if (!response.ok) return { error: `Gemini error: ${response.status}` }
     const data = await response.json()
-    const reply: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    const rawReply: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
-    if (reply) {
+    let suggestions: string[] | undefined = undefined
+    let cleanReply = rawReply
+    const suggestMatch = rawReply.match(/%%%SUGGEST%%%([\s\S]*?)%%%END%%%/)
+    if (suggestMatch) {
+      suggestions = suggestMatch[1].split('|').map((s) => s.trim()).filter(Boolean)
+      cleanReply = rawReply.replace(/%%%SUGGEST%%%([\s\S]*?)%%%END%%%/, '').trim()
+    }
+
+    if (cleanReply) {
       await supabase.from('chat_messages').insert({
         user_id: user.id,
         conversation_id: conversationId,
         role: 'assistant',
-        content: reply,
+        content: cleanReply,
         project_id: null,
         quest_id: null,
       })
@@ -358,7 +392,7 @@ ${knowledgeText}
         .eq('user_id', user.id)
     }
 
-    return { reply }
+    return { reply: cleanReply, suggestions }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'connection failed' }
   }
