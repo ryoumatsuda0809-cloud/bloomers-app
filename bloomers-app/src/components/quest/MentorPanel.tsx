@@ -74,29 +74,14 @@ export default function MentorPanel({
   }, [])
 
   useEffect(() => {
-    const cacheKey = `bloomer_mentor_${questId}_${projectId}_${mode}`
-
     const init = async () => {
-      const cached = localStorage.getItem(cacheKey)
-      if (cached) { setSystemPrompt(cached); return }
-
       if (mode === 'idea') {
         const { prompt, error } = await generateIdeaMentorSystemPrompt(questTitle)
-        if (prompt && !error) {
-          localStorage.setItem(cacheKey, prompt)
-          setSystemPrompt(prompt)
-        } else {
-          setSystemPrompt(FALLBACK_IDEA_SYSTEM_PROMPT)
-        }
+        setSystemPrompt(prompt && !error ? prompt : FALLBACK_IDEA_SYSTEM_PROMPT)
       } else {
         const context = await getMentorContext(projectId, questTitle, stepTitle ?? '')
         const { prompt, error } = await generateMentorSystemPrompt(questTitle, context)
-        if (prompt && !error) {
-          localStorage.setItem(cacheKey, prompt)
-          setSystemPrompt(prompt)
-        } else {
-          setSystemPrompt(FALLBACK_SYSTEM_PROMPT)
-        }
+        setSystemPrompt(prompt && !error ? prompt : FALLBACK_SYSTEM_PROMPT)
       }
     }
 

@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
+import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY } from '@/lib/mentor-base'
 
 export type MentorContext = {
   who: string
@@ -52,59 +53,22 @@ export async function generateMentorSystemPrompt(
   questTitle: string,
   context: MentorContext
 ): Promise<{ prompt?: string; error?: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return { error: 'API key missing' }
+  const questRole = `\n\n【役割：クエスト常駐メンター】
+あなたはユーザーが今取り組んでいるクエストの伴走者です。詰まりを解決し、前に進める手助けをします。
 
-  const systemReminder = `
-<system-reminder>
 現在の状況：
 - クエスト：${context.questTitle}
 - ステップ：${context.stepTitle}
-- ユーザーが作ってるもの：
+- ユーザーが作っているもの：
   誰のために：${context.who}
   何を解決する：${context.what}
   どうやって：${context.how}
 
-この文脈を踏まえた上で「あなたのアプリでは、このステップはこういう意味がある」
-という形でユーザーをサポートしてください。
-ChatGPTでは絶対に出てこない、ユーザー固有の文脈に沿ったサポートをしてください。
-</system-reminder>`.trim()
+この文脈を踏まえ「あなたのアプリでは、このステップはこういう意味がある」という形で、ユーザー固有の文脈に沿ってサポートしてください。一般的なAIでは出てこない、この人のプロジェクトに即した助けを。
+詰まった時は、選択肢を1つずつ提示して原因を絞り込んでください。技術用語を避け、親しみやすい口調で。`
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `以下の情報を元に「${questTitle}」クエスト専用のメンター・システムプロンプトを生成してください。
-このクエストで初心者が詰まりやすいポイントを3〜5個特定し、
-各ポイントに対する解決策を熟知した専門家として振る舞う指示を含めてください。
-出力はシステムプロンプトの文章のみ（前置き不要）：
-
-${systemReminder}
-
-追記すべき内容：
-- 「${questTitle}」で初心者が詰まりやすい具体的ポイント
-- 詰まった時は選択肢を1つずつ提示して原因を絞り込む
-- 技術用語を使わず友達のような口調（「だね」「だよ」）
-- 1回の返答は3文以内
-- 絶対に同じ質問を繰り返さない`
-            }]
-          }],
-        }),
-      }
-    )
-
-    if (!response.ok) return { error: `Gemini error: ${response.status}` }
-    const data = await response.json()
-    const prompt = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-    return { prompt }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'generation failed' }
-  }
+  const prompt = BASE_SYSTEM_PROMPT + questRole + FINAL_PRIORITY
+  return { prompt }
 }
 
 export async function sendMentorMessage(
@@ -220,38 +184,10 @@ JSON形式のみで返すこと（前置き不要）：
 export async function generateIdeaMentorSystemPrompt(
   questTitle: string
 ): Promise<{ prompt?: string; error?: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return { error: 'API key missing' }
+  const ideaRole = `\n\n【役割：アイデア壁打ちメンター】
+あなたはダッシュボードで、ユーザーのアイデアを一緒に育てる相手です。「${questTitle}」というプロジェクトに取り組み始めたユーザーのアイデアを深掘りします。
+「誰のために」「何を解決するか」「どうやって実現するか」を一緒に考え、ユーザーにわくわくを感じさせてください。提案は1つずつ、テンプレ的でない具体的なものを。親しみやすい口調で。`
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `あなたはBloomerのアイデアメンターです。
-ユーザーは「${questTitle}」というプロジェクトに取り組み始めたところです。
-以下の役割を担うシステムプロンプトを生成してください：
-- ユーザーのアイデアをさらに深掘りして育てる
-- 「誰のために」「何を解決するか」「どうやって実現するか」を一緒に考える
-- ユーザーに「わくわく」を感じさせる
-- 技術用語を使わず友達のような口調
-- 1回の返答は3文以内
-- 同じ質問を繰り返さない
-出力はシステムプロンプトの文章のみ（前置き不要）：`
-            }]
-          }],
-        }),
-      }
-    )
-    if (!response.ok) return { error: `Gemini error: ${response.status}` }
-    const data = await response.json()
-    const prompt = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-    return { prompt }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'generation failed' }
-  }
+  const prompt = BASE_SYSTEM_PROMPT + ideaRole + FINAL_PRIORITY
+  return { prompt }
 }
