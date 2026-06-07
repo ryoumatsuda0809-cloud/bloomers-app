@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
-import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY } from '@/lib/mentor-base'
+import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY, MENTOR_TEMPERATURE } from '@/lib/mentor-base'
 
 export type MentorContext = {
   who: string
@@ -74,7 +74,8 @@ export async function generateMentorSystemPrompt(
 export async function sendMentorMessage(
   userMessage: string,
   history: { role: 'user' | 'assistant'; content: string }[],
-  systemPrompt: string
+  systemPrompt: string,
+  temperature: number = MENTOR_TEMPERATURE.quest
 ): Promise<{ reply?: string; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'API key missing' }
@@ -125,6 +126,7 @@ export async function sendMentorMessage(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          generationConfig: { temperature },
           system_instruction: { parts: [{ text: finalSystemPrompt }] },
           contents,
         }),

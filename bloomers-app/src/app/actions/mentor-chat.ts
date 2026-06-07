@@ -5,7 +5,7 @@ import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
 import { getCustomMentor } from '@/app/actions/custom-mentors'
 import type { PersonalityData } from '@/app/actions/onboarding'
-import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY, toneBlock, decideTone, type MentorTone } from '@/lib/mentor-base'
+import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY, toneBlock, decideTone, type MentorTone, MENTOR_TEMPERATURE } from '@/lib/mentor-base'
 
 export type MentorMode = 'idea' | 'general' | 'custom'
 export type ResponseStyle = 'light' | 'deep'
@@ -287,6 +287,7 @@ ${knowledgeText}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          generationConfig: { temperature: MENTOR_TEMPERATURE[mentorMode] },
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents,
         }),

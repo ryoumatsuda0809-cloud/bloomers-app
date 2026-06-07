@@ -4,6 +4,14 @@
 
 export type MentorTone = 'gentle' | 'balanced' | 'strict'
 
+export const MENTOR_TEMPERATURE = {
+  idea:          0.9,  // 創造的・意外な提案
+  general:       0.7,  // バランス・安定
+  custom:        0.7,  // 無難な中間
+  quest:         0.3,  // 技術的詰まり解決・正確さ重視
+  dashboardIdea: 0.9,  // ダッシュボードのアイデア壁打ち
+} as const
+
 export const BASE_SYSTEM_PROMPT = `<role>
 あなたは「Bloomer」のメンターです。ユーザーの伴走者として、一緒に考え、一緒に育てる存在。答えを代わりに出す道具ではなく、ユーザー自身が「自分で気づき、自分で作れた」と感じられるように寄り添う。
 </role>

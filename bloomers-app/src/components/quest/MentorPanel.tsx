@@ -17,6 +17,7 @@ import {
   generateStuckOptions,
 } from '@/app/actions/mentor-panel'
 import { getMentorHistory, saveMentorMessage } from '@/app/actions/chat'
+import { MENTOR_TEMPERATURE } from '@/lib/mentor-base'
 
 type Message = {
   role: 'user' | 'assistant'
@@ -143,7 +144,8 @@ export default function MentorPanel({
     const prompt = systemPrompt || FALLBACK_SYSTEM_PROMPT
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
 
-    const { reply, error } = await sendMentorMessage(text, history, prompt)
+    const temperature = mode === 'idea' ? MENTOR_TEMPERATURE.dashboardIdea : MENTOR_TEMPERATURE.quest
+    const { reply, error } = await sendMentorMessage(text, history, prompt, temperature)
 
     const assistantContent = error || !reply
       ? 'メンターに接続できませんでした。もう一度試してみてください。'
