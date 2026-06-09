@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ArrowUp, LifeBuoy, MessageCircle } from 'lucide-react'
+import { ArrowUp, LifeBuoy, MessageCircle, X } from 'lucide-react'
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetTitle,
   SheetTrigger,
@@ -277,14 +278,16 @@ export default function MentorPanel({
       )}
 
       {/* モバイル・タブレット（xl未満）：Shadcn Sheet */}
-      <div className="xl:hidden fixed bottom-4 right-4 z-50">
+      <div className="xl:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
-              className="bg-primary text-primary-foreground p-3.5 rounded-full shadow-lg hover:bg-primary/90 transition"
+              className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3.5 px-4 shadow-lg hover:bg-primary/90 transition"
               aria-label="メンターに相談する"
+              style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom))' }}
             >
-              <MessageCircle className="size-5" />
+              <MessageCircle className="size-5 shrink-0" />
+              <span className="text-sm font-semibold">メンターに相談する</span>
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[80vh] p-0 flex flex-col rounded-t-2xl">
@@ -296,6 +299,11 @@ export default function MentorPanel({
                   <p className="text-xs font-semibold text-foreground">メンター</p>
                   <p className="text-xs text-muted-foreground">{questTitle}</p>
                 </div>
+                <SheetClose asChild>
+                  <button className="ml-auto p-1 rounded-lg hover:bg-muted transition" aria-label="閉じる">
+                    <X className="size-4 text-muted-foreground" />
+                  </button>
+                </SheetClose>
               </div>
             </div>
             <div className="flex flex-col flex-1 min-h-0">
