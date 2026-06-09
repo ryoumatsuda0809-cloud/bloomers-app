@@ -160,108 +160,6 @@ export default function MentorPanel({
     setIsLoading(false)
   }
 
-  const ChatMessages = () => (
-    <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
-      {messages.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            詰まったことがあれば<br />何でも聞いてください
-          </p>
-        </div>
-      )}
-
-      {messages.map((m, i) => (
-        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-          {m.role === 'assistant' && (
-            <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>
-          )}
-          <div className="space-y-2 max-w-[85%]">
-            <div className={`rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
-              m.role === 'user'
-                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                : 'bg-muted text-foreground rounded-bl-sm'
-            }`}>
-              {m.content}
-            </div>
-
-            {m.options && (
-              <div className="space-y-1.5">
-                {m.options.map((opt, j) => (
-                  <button
-                    key={j}
-                    onClick={() => handleSend(opt)}
-                    disabled={isLoading}
-                    className="w-full text-left text-xs px-3 py-2 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent/20 transition text-foreground"
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-
-      {(isLoading || isGeneratingOptions) && (
-        <div className="flex justify-start">
-          <span className="text-sm mr-1.5 shrink-0">🌸</span>
-          <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2">
-            <div className="flex gap-1">
-              {[0, 150, 300].map((delay) => (
-                <div
-                  key={delay}
-                  className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
-                  style={{ animationDelay: `${delay}ms` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div ref={bottomRef} />
-    </div>
-  )
-
-  const InputArea = () => (
-    <div className="border-t border-border p-3 shrink-0">
-      <div className="flex gap-2">
-        <button
-          onClick={handleStuck}
-          disabled={isLoading || isGeneratingOptions}
-          title="詰まったら押す"
-          className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
-        >
-          <LifeBuoy className="size-4" />
-        </button>
-
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleSend()
-            }
-          }}
-          placeholder="何でも聞いてください..."
-          rows={1}
-          disabled={isLoading}
-          className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
-        />
-
-        <button
-          onClick={() => handleSend()}
-          disabled={!input.trim() || isLoading}
-          className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
-          aria-label="送信"
-        >
-          <ArrowUp className="size-3" />
-        </button>
-      </div>
-    </div>
-  )
-
   return (
     <>
       {/* デスクトップ（xl以上）：右カラム常駐（desktopOpen制御対応） */}
@@ -285,8 +183,96 @@ export default function MentorPanel({
               </button>
             )}
           </div>
-          <ChatMessages />
-          <InputArea />
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+            {messages.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  詰まったことがあれば<br />何でも聞いてください
+                </p>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'assistant' && (
+                  <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>
+                )}
+                <div className="space-y-2 max-w-[85%]">
+                  <div className={`rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+                    m.role === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-br-sm'
+                      : 'bg-muted text-foreground rounded-bl-sm'
+                  }`}>
+                    {m.content}
+                  </div>
+                  {m.options && (
+                    <div className="space-y-1.5">
+                      {m.options.map((opt, j) => (
+                        <button
+                          key={j}
+                          onClick={() => handleSend(opt)}
+                          disabled={isLoading}
+                          className="w-full text-left text-xs px-3 py-2 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent/20 transition text-foreground"
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {(isLoading || isGeneratingOptions) && (
+              <div className="flex justify-start">
+                <span className="text-sm mr-1.5 shrink-0">🌸</span>
+                <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2">
+                  <div className="flex gap-1">
+                    {[0, 150, 300].map((delay) => (
+                      <div
+                        key={delay}
+                        className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                        style={{ animationDelay: `${delay}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <div className="border-t border-border p-3 shrink-0">
+            <div className="flex gap-2">
+              <button
+                onClick={handleStuck}
+                disabled={isLoading || isGeneratingOptions}
+                title="詰まったら押す"
+                className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
+              >
+                <LifeBuoy className="size-4" />
+              </button>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+                placeholder="何でも聞いてください..."
+                rows={1}
+                disabled={isLoading}
+                className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isLoading}
+                className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
+                aria-label="送信"
+              >
+                <ArrowUp className="size-3" />
+              </button>
+            </div>
+          </div>
         </aside>
       )}
 
@@ -313,8 +299,96 @@ export default function MentorPanel({
               </div>
             </div>
             <div className="flex flex-col flex-1 min-h-0">
-              <ChatMessages />
-              <InputArea />
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+                {messages.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      詰まったことがあれば<br />何でも聞いてください
+                    </p>
+                  </div>
+                )}
+                {messages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {m.role === 'assistant' && (
+                      <span className="text-sm mr-1.5 mt-0.5 shrink-0">🌸</span>
+                    )}
+                    <div className="space-y-2 max-w-[85%]">
+                      <div className={`rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+                        m.role === 'user'
+                          ? 'bg-primary text-primary-foreground rounded-br-sm'
+                          : 'bg-muted text-foreground rounded-bl-sm'
+                      }`}>
+                        {m.content}
+                      </div>
+                      {m.options && (
+                        <div className="space-y-1.5">
+                          {m.options.map((opt, j) => (
+                            <button
+                              key={j}
+                              onClick={() => handleSend(opt)}
+                              disabled={isLoading}
+                              className="w-full text-left text-xs px-3 py-2 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent/20 transition text-foreground"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {(isLoading || isGeneratingOptions) && (
+                  <div className="flex justify-start">
+                    <span className="text-sm mr-1.5 shrink-0">🌸</span>
+                    <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2">
+                      <div className="flex gap-1">
+                        {[0, 150, 300].map((delay) => (
+                          <div
+                            key={delay}
+                            className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                            style={{ animationDelay: `${delay}ms` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+              <div className="border-t border-border p-3 shrink-0">
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleStuck}
+                    disabled={isLoading || isGeneratingOptions}
+                    title="詰まったら押す"
+                    className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
+                  >
+                    <LifeBuoy className="size-4" />
+                  </button>
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSend()
+                      }
+                    }}
+                    placeholder="何でも聞いてください..."
+                    rows={1}
+                    disabled={isLoading}
+                    className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
+                  />
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() || isLoading}
+                    className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
+                    aria-label="送信"
+                  >
+                    <ArrowUp className="size-3" />
+                  </button>
+                </div>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
