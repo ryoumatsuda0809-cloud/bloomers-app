@@ -50,16 +50,18 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){
           try {
-            var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var saved = localStorage.getItem('bloomer_theme');
+            var isDark;
+            if (saved === 'dark') isDark = true;
+            else if (saved === 'light') isDark = false;
+            else isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (isDark) document.documentElement.classList.add('dark');
-            window.matchMedia('(prefers-color-scheme: dark)')
-              .addEventListener('change', function(e) {
-                if (e.matches) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              });
+            else document.documentElement.classList.remove('dark');
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+              if (localStorage.getItem('bloomer_theme')) return;
+              if (e.matches) document.documentElement.classList.add('dark');
+              else document.documentElement.classList.remove('dark');
+            });
           } catch(e) {}
         })();`,
           }}

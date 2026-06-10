@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, LogOut } from 'lucide-react'
+import { ArrowLeft, LogOut, Sun, Moon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppShell from '@/components/layout/AppShell'
 import {
@@ -42,6 +42,18 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [toneOverride, setToneOverride] = useState<'gentle' | 'balanced' | 'strict' | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  useEffect(() => {
+    setIsDarkMode(document.documentElement.classList.contains('dark'))
+  }, [])
+
+  const handleToggleTheme = (dark: boolean) => {
+    setIsDarkMode(dark)
+    if (dark) document.documentElement.classList.add('dark')
+    else document.documentElement.classList.remove('dark')
+    try { localStorage.setItem('bloomer_theme', dark ? 'dark' : 'light') } catch {}
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -335,6 +347,34 @@ export default function ProfilePage() {
         {/* ログアウト */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="text-xs text-muted-foreground font-medium mb-3">設定</p>
+
+          {/* テーマ切り替え */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-foreground flex items-center gap-2">
+              {isDarkMode ? <Moon className="size-4" /> : <Sun className="size-4" />}
+              {isDarkMode ? 'ダークモード' : 'ライトモード'}
+            </span>
+            <button
+              onClick={() => handleToggleTheme(!isDarkMode)}
+              role="switch"
+              aria-checked={isDarkMode}
+              aria-label="テーマ切り替え"
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                isDarkMode ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-flex size-5 items-center justify-center rounded-full bg-white shadow transition-transform ${
+                  isDarkMode ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              >
+                {isDarkMode
+                  ? <Moon className="size-3 text-primary" />
+                  : <Sun className="size-3 text-amber-500" />}
+              </span>
+            </button>
+          </div>
+
           <button
             onClick={() => setShowLogoutDialog(true)}
             className="w-full flex items-center justify-center gap-2 text-sm text-destructive border border-destructive/30 rounded-xl py-2.5 hover:bg-destructive/10 transition"
