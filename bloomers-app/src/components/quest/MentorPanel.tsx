@@ -2,14 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ArrowUp, LifeBuoy, MessageCircle } from 'lucide-react'
+import { ArrowUp, LifeBuoy, ChevronUp, ChevronDown } from 'lucide-react'
 import { useSidebar } from '@/components/providers/SidebarProvider'
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
 import {
   getMentorContext,
   generateMentorSystemPrompt,
@@ -59,7 +53,8 @@ export default function MentorPanel({
   const router = useRouter()
   const pathname = usePathname()
   const { isOpen: sidebarIsOpen } = useSidebar()
-  const [sheetOpen, setSheetOpen] = useState(initialOpen)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -67,10 +62,10 @@ export default function MentorPanel({
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // initialOpen=true なら1回だけSheetを開き、URLから ?mentorOpen=true を除去する
+  // initialOpen=true なら1回だけ展開し、URLから ?mentorOpen=true を除去する
   useEffect(() => {
     if (initialOpen) {
-      setSheetOpen(true)
+      setIsExpanded(true)
       router.replace(pathname)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,34 +273,41 @@ export default function MentorPanel({
         </aside>
       )}
 
-      {/* モバイル・タブレット（xl未満）：Shadcn Sheet */}
-      <div className="xl:hidden">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          {!sidebarIsOpen && (
-            <SheetTrigger asChild>
-              <button
-                className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-amber-500 text-amber-950 dark:bg-amber-800 dark:text-amber-50 py-3.5 px-4 shadow-lg hover:bg-amber-600 dark:hover:bg-amber-900 transition"
-                aria-label="メンターに相談する"
-                style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom))' }}
-              >
-                <MessageCircle className="size-5 shrink-0" />
-                <span className="text-sm font-semibold">メンターに相談する</span>
-              </button>
-            </SheetTrigger>
+      {/* スマホ・タブレット（xl未満）：下部常駐入力欄＋フォーカスで開くボタン＋展開オーバーレイ */}
+      {!sidebarIsOpen && (
+        <>
+          {/* 展開時の背景オーバーレイ（後ろをタップで閉じる） */}
+          {isExpanded && (
+            <div
+              className="xl:hidden fixed inset-0 bg-black/40 z-30"
+              onClick={() => { setIsExpanded(false); setIsFocused(false) }}
+              aria-hidden="true"
+            />
           )}
-          <SheetContent side="bottom" className="h-[80vh] p-0 flex flex-col rounded-t-2xl">
-            <SheetTitle className="sr-only">メンターチャット</SheetTitle>
-            <div className="px-4 py-3 border-b border-border shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🌸</span>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">メンター</p>
-                  <p className="text-xs text-muted-foreground">{questTitle}</p>
-                </div>
+
+          {/* 下部パネル（角丸・浮かせる） */}
+          <div className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-card border border-border shadow-lg rounded-t-2xl overflow-hidden">
+
+            {/* 展開ヘッダー（展開時のみ・∨で閉じる） */}
+            {isExpanded && (
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <span className="text-base">🌸</span>
+                  メンター
+                </span>
+                <button
+                  onClick={() => { setIsExpanded(false); setIsFocused(false) }}
+                  aria-label="閉じる"
+                  className="p-1 rounded-lg hover:bg-muted transition"
+                >
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </button>
               </div>
-            </div>
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+            )}
+
+            {/* チャット履歴（展開時のみ・約45vh） */}
+            {isExpanded && (
+              <div className="overflow-y-auto p-3 space-y-3 h-[45vh]">
                 {messages.length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -361,44 +363,58 @@ export default function MentorPanel({
                 )}
                 <div ref={bottomRef} />
               </div>
-              <div className="border-t border-border p-3 shrink-0">
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleStuck}
-                    disabled={isLoading || isGeneratingOptions}
-                    title="詰まったら押す"
-                    className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
-                  >
-                    <LifeBuoy className="size-4" />
-                  </button>
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSend()
-                      }
-                    }}
-                    placeholder="何でも聞いてください..."
-                    rows={1}
-                    disabled={isLoading}
-                    className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
-                  />
-                  <button
-                    onClick={() => handleSend()}
-                    disabled={!input.trim() || isLoading}
-                    className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
-                    aria-label="送信"
-                  >
-                    <ArrowUp className="size-3" />
-                  </button>
-                </div>
+            )}
+
+            {/* 入力欄（常駐） */}
+            <div className="p-3" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+              {/* フォーカス時かつ未展開なら「∧開く」ボタン */}
+              {isFocused && !isExpanded && (
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setIsExpanded(true)}
+                  className="w-full flex items-center justify-center gap-1.5 mb-2 py-1.5 rounded-lg bg-muted text-foreground text-xs font-medium hover:bg-muted/80 transition"
+                >
+                  <ChevronUp className="size-3.5" />
+                  メンターを開く
+                </button>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleStuck}
+                  disabled={isLoading || isGeneratingOptions}
+                  title="詰まったら押す"
+                  className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
+                >
+                  <LifeBuoy className="size-4" />
+                </button>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSend()
+                    }
+                  }}
+                  placeholder="何でも聞いてください..."
+                  rows={1}
+                  disabled={isLoading}
+                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
+                />
+                <button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim() || isLoading}
+                  className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
+                  aria-label="送信"
+                >
+                  <ArrowUp className="size-3" />
+                </button>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
