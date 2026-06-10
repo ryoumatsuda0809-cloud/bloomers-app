@@ -18,6 +18,7 @@ type Message = {
   role: 'user' | 'assistant'
   content: string
   options?: string[]
+  isGreeting?: boolean
 }
 
 interface MentorPanelProps {
@@ -29,6 +30,19 @@ interface MentorPanelProps {
   initialOpen?: boolean
   desktopOpen?: boolean
   onDesktopClose?: () => void
+  isTrial?: boolean
+}
+
+function getTrialGuide(questTitle: string): string {
+  return `お試しモードへようこそ！
+
+ここでは実際にアプリを作る流れを体験できるよ。
+
+・左のクエストを上から順番に進めてみてね
+・いまは「${questTitle}」のステップが並んでるよ
+・分からないことは何でも僕に聞いてね！
+
+気に入ったら「自分のアイデアで始める」から、君だけのアプリ作りをスタートできるよ 🌸`
 }
 
 const FALLBACK_SYSTEM_PROMPT = `あなたはBloomerのメンターです。
@@ -49,6 +63,7 @@ export default function MentorPanel({
   initialOpen = false,
   desktopOpen,
   onDesktopClose,
+  isTrial = false,
 }: MentorPanelProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -99,6 +114,8 @@ export default function MentorPanel({
           setMessages(
             history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content }))
           )
+        } else if (isTrial) {
+          setMessages([{ role: 'assistant', content: getTrialGuide(questTitle), isGreeting: true }])
         }
       } catch {
         // 読み込み失敗時は空のまま新規開始
@@ -139,7 +156,7 @@ export default function MentorPanel({
     saveMentorMessage(projectId, questId, 'user', text).catch(() => {})
 
     const prompt = systemPrompt || FALLBACK_SYSTEM_PROMPT
-    const history = messages.map((m) => ({ role: m.role, content: m.content }))
+    const history = messages.filter((m) => !m.isGreeting).map((m) => ({ role: m.role, content: m.content }))
 
     const temperature = mode === 'idea' ? MENTOR_TEMPERATURE.dashboardIdea : MENTOR_TEMPERATURE.quest
     const { reply, error } = await sendMentorMessage(text, history, prompt, temperature)

@@ -57,6 +57,7 @@ function QuestContent() {
   const [noteSaveStatus, setNoteSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [mentorOpen, setMentorOpen] = useState(true)
   const [mentorHistory, setMentorHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [isTrial, setIsTrial] = useState(false)
   const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const wasCompleteOnLoad = useRef(false)
@@ -73,13 +74,14 @@ function QuestContent() {
 
       const { data } = await supabase
         .from('project_ideas')
-        .select(`id, ${config.columnName}`)
+        .select(`id, is_trial, ${config.columnName}`)
         .eq('user_id', user.id)
         .eq('is_active', true)
         .single()
 
       if (data) {
         setProjectId(data.id)
+        setIsTrial((data as Record<string, unknown>).is_trial === true)
         const stepsData = (data as Record<string, unknown>)[config.columnName]
         const loadedSteps = (stepsData ?? []) as SetupStep[]
         setSteps(loadedSteps)
@@ -413,6 +415,7 @@ function QuestContent() {
             projectId={projectId}
             desktopOpen={mentorOpen}
             onDesktopClose={() => setMentorOpen(false)}
+            isTrial={isTrial}
           />
         )}
 
