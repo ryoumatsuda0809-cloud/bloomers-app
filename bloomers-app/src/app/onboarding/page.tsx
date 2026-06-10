@@ -115,6 +115,18 @@ export default function OnboardingPage() {
                 メンターと話しながら、一緒に見つけましょう
               </p>
             </button>
+
+            <button
+              onClick={() => router.push('/trial')}
+              className="w-full h-auto py-4 bg-background hover:bg-muted border border-dashed border-border hover:border-primary rounded-2xl transition group text-left px-5"
+            >
+              <p className="text-muted-foreground font-medium text-sm group-hover:text-primary transition-colors">
+                まずお試しで体験する
+              </p>
+              <p className="text-muted-foreground text-xs mt-0.5 opacity-70">
+                アイデアがなくても、サンプルで操作を体験できます
+              </p>
+            </button>
           </div>
         )}
 

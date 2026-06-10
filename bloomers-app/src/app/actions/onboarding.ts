@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { generateSetupSteps, generateQuestSteps } from '@/app/actions/setup'
+import type { SetupStep } from '@/app/actions/setup'
 
 export type PersonalityData = {
   timeUsage: string
@@ -403,4 +404,43 @@ export async function updateToneOverride(
     .eq('id', user.id)
   if (error) return { error: 'トーン設定の保存に失敗しました。' }
   return { success: true }
+}
+
+export async function saveTrialProject(
+  ideaCard: IdeaCard,
+  setupSteps: SetupStep[]
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  try {
+    await supabase
+      .from('project_ideas')
+      .update({ is_active: false })
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+
+    const { error: insertError } = await supabase
+      .from('project_ideas')
+      .insert({
+        user_id: user.id,
+        title: ideaCard.title,
+        description: ideaCard.description,
+        idea_card: ideaCard,
+        setup_steps: setupSteps,
+        is_active: true,
+        is_trial: true,
+      })
+    if (insertError) return { error: 'お試しプロジェクトの作成に失敗しました。' }
+
+    await supabase
+      .from('profiles')
+      .update({ onboarding_completed: true, selected_idea: ideaCard })
+      .eq('id', user.id)
+
+    return { success: true }
+  } catch {
+    return { error: 'お試しの開始に失敗しました。' }
+  }
 }

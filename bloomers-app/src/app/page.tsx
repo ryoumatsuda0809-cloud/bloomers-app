@@ -26,12 +26,13 @@ export default async function Home({ searchParams }: Props) {
 
   const { data: activeProject } = await supabase
     .from('project_ideas')
-    .select('id')
+    .select('id, is_trial')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
 
   const activeProjectId = activeProject?.id ?? ''
+  const isTrial = (activeProject as { id?: string; is_trial?: boolean } | null)?.is_trial ?? false
 
   const { data: rows } = await supabase
     .from('quest_progress')
@@ -48,7 +49,7 @@ export default async function Home({ searchParams }: Props) {
   return (
     <main className="min-h-screen bg-background">
       <QuestStoreInitializer quests={initialQuests} />
-      <QuestDashboard activeProjectId={activeProjectId} mentorOpen={mentorOpen} />
+      <QuestDashboard activeProjectId={activeProjectId} mentorOpen={mentorOpen} isTrial={isTrial} />
     </main>
   )
 }
