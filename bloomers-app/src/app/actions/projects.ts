@@ -147,6 +147,28 @@ export async function pauseProject(
   return { success: true }
 }
 
+export async function renameProjectIdea(
+  id: string,
+  title: string
+): Promise<{ success?: boolean; error?: string }> {
+  const trimmed = title.trim()
+  if (!trimmed) return { error: '名前を入力してください。' }
+  if (trimmed.length > 100) return { error: '名前が長すぎます（100文字以内）。' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+
+  const { error } = await supabase
+    .from('project_ideas')
+    .update({ title: trimmed })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return { error: '名前の変更に失敗しました。' }
+  return { success: true }
+}
+
 export async function deleteProjectIdea(
   projectId: string
 ): Promise<{ success?: boolean; error?: string }> {

@@ -18,26 +18,15 @@ const MBTI_TYPES = [
 ]
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import {
-  getSelectedIdea,
-  resetOnboarding,
-  updateToneOverride,
-} from '@/app/actions/onboarding'
+import { updateToneOverride } from '@/app/actions/onboarding'
 import { createClient } from '@/lib/supabase/client'
 import type { PersonalityData, IdeaCard } from '@/app/actions/onboarding'
-import {
-  getProjectIdeas,
-  setActiveProject,
-  deleteProjectIdea,
-} from '@/app/actions/projects'
-import type { ProjectIdea } from '@/app/actions/projects'
 
 export default function ProfilePage() {
   const router = useRouter()
   const [personality, setPersonality] = useState<PersonalityData | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<IdeaCard | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -70,8 +59,6 @@ export default function ProfilePage() {
       if (data?.personality_data) setPersonality(data.personality_data)
       if (data?.selected_idea) setSelectedIdea(data.selected_idea)
       if (data?.tone_override !== undefined) setToneOverride(data.tone_override ?? null)
-      const ideas = await getProjectIdeas()
-      setProjects(ideas)
       setIsLoading(false)
     }
     load()
@@ -94,21 +81,6 @@ export default function ProfilePage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const handleSetActive = async (projectId: string) => {
-    await setActiveProject(projectId)
-    setProjects(projects.map((p) => ({
-      ...p,
-      isActive: p.id === projectId,
-    })))
-    router.refresh()
-  }
-
-  const handleDelete = async (projectId: string) => {
-    if (!confirm('このプロジェクト案を削除しますか？')) return
-    await deleteProjectIdea(projectId)
-    setProjects(projects.filter((p) => p.id !== projectId))
-  }
-
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -118,12 +90,6 @@ export default function ProfilePage() {
   const handleToneChange = async (tone: 'gentle' | 'balanced' | 'strict' | null) => {
     setToneOverride(tone)
     await updateToneOverride(tone)
-  }
-
-  const handleReset = async () => {
-    if (!confirm('もう一度最初から答えますか？現在のプロジェクトはリセットされます。')) return
-    await resetOnboarding()
-    router.push('/onboarding')
   }
 
   if (isLoading) {
@@ -166,59 +132,6 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground font-medium">現在のプロジェクト</p>
             <p className="text-lg font-bold text-foreground">{selectedIdea.title}</p>
             <p className="text-sm text-muted-foreground">{selectedIdea.description}</p>
-          </div>
-        )}
-
-        {/* 保存済みプロジェクト案 */}
-        {projects.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
-            <p className="text-sm font-semibold text-foreground">
-              保存済みのプロジェクト案
-            </p>
-            <div className="space-y-2">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className={`rounded-xl border p-4 space-y-2 transition ${
-                    project.isActive
-                      ? 'border-primary bg-accent/40'
-                      : 'border-border bg-muted'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {project.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {project.description}
-                      </p>
-                    </div>
-                    {project.isActive && (
-                      <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full shrink-0">
-                        アクティブ
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {!project.isActive && (
-                      <button
-                        onClick={() => handleSetActive(project.id)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        これをアクティブにする
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(project.id)}
-                      className="text-xs text-destructive hover:underline ml-auto"
-                    >
-                      削除
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -327,21 +240,6 @@ export default function ProfilePage() {
           >
             メンターとアイデアを探す
           </button>
-        </div>
-
-        {/* 再質問 */}
-        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
-          <p className="text-sm font-semibold text-foreground">最初からやり直す</p>
-          <p className="text-xs text-muted-foreground">
-            質問に答え直して、新しいプロジェクトを選択できます。
-          </p>
-          <Button
-            onClick={handleReset}
-            variant="outline"
-            className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 rounded-xl"
-          >
-            もう一度最初から答える
-          </Button>
         </div>
 
         {/* ログアウト */}

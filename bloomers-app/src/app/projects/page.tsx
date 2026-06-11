@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Sprout, Pin, PinOff } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Sprout, Pin, PinOff, Folder, Pencil, Trash2, MoreVertical } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea, pauseProject } from '@/app/actions/projects'
+import { getProjectIdeas, setActiveProject, deleteProjectIdea, pinProjectIdea, pauseProject, renameProjectIdea } from '@/app/actions/projects'
 import type { ProjectIdea } from '@/app/actions/projects'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppShell from '@/components/layout/AppShell'
-import { QUEST_CONFIG } from '@/lib/quest-utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +23,10 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewIdeaDialog, setShowNewIdeaDialog] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState<string | null>(null)
 
   const activeProject = projects.find((p) => p.isActive)
 
@@ -34,27 +37,49 @@ export default function ProjectsPage() {
     })
   }, [])
 
-  const handleSetActive = async (projectId: string) => {
-    await setActiveProject(projectId)
-    setProjects(projects.map((p) => ({
-      ...p,
-      isActive: p.id === projectId,
-    })))
-    router.refresh()
-  }
-
   const handleDelete = async (projectId: string) => {
     if (!confirm('このプロジェクト案を削除しますか？')) return
     await deleteProjectIdea(projectId)
     setProjects(projects.filter((p) => p.id !== projectId))
   }
 
-  const handlePin = async (projectId: string, currentPinned: boolean) => {
-    await pinProjectIdea(projectId, !currentPinned)
-    setProjects(projects.map((p) =>
-      p.id === projectId ? { ...p, isPinned: !currentPinned } : p
-    ))
+  const handleOpenProject = async (id: string) => {
+    await setActiveProject(id)
+    router.push('/')
   }
+
+  const startRename = (p: ProjectIdea) => {
+    setRenameValue(p.title)
+    setRenamingId(p.id)
+    setOpenMenuId(null)
+    setRenameError(null)
+  }
+
+  const handleRename = async (id: string) => {
+    const newTitle = renameValue.trim()
+    const original = projects.find((p) => p.id === id)?.title ?? ''
+    if (!newTitle || newTitle === original) { setRenamingId(null); return }
+    setProjects((prev) => prev.map((p) => p.id === id ? { ...p, title: newTitle } : p))
+    setRenamingId(null)
+    const res = await renameProjectIdea(id, newTitle)
+    if (res.error) {
+      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, title: original } : p))
+      setRenameError(res.error)
+    }
+  }
+
+  const handleTogglePin = async (p: ProjectIdea) => {
+    const next = !p.isPinned
+    setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, isPinned: next } : x))
+    setOpenMenuId(null)
+    const res = await pinProjectIdea(p.id, next)
+    if (res?.error) {
+      setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, isPinned: !next } : x))
+    }
+  }
+
+  const pinnedProjects = projects.filter((p) => p.isPinned)
+  const otherProjects = projects.filter((p) => !p.isPinned)
 
   if (isLoading) {
     return (
@@ -119,140 +144,163 @@ export default function ProjectsPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className={`bg-card rounded-2xl border transition ${
-                  project.isActive
-                    ? 'border-primary shadow-sm'
-                    : 'border-border'
-                }`}
-              >
-                {/* タップ可能なメインエリア */}
-                <div
-                  onClick={() => {
-                    if (project.isActive) {
-                      router.push('/')
-                    } else {
-                      handleSetActive(project.id)
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      if (project.isActive) {
-                        router.push('/')
-                      } else {
-                        handleSetActive(project.id)
-                      }
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  className="p-5 space-y-2 cursor-pointer hover:bg-muted rounded-t-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-base font-bold text-foreground">
-                          {project.title}
-                        </p>
-                        {project.isActive && (
-                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                            アクティブ
-                          </span>
-                        )}
-                        {project.isPinned && (
-                          <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">
-                            ピン済み
-                          </span>
-                        )}
-                        {project.status === 'paused' && (
-                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                            途中
-                          </span>
-                        )}
-                        {project.status === 'completed' && (
-                          <span className="text-xs bg-accent/40 text-accent-foreground px-2 py-0.5 rounded-full">
-                            完了
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {project.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(project.createdAt).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handlePin(project.id, project.isPinned)
-                      }}
-                      aria-label={project.isPinned ? 'ピンを外す' : 'ピンする'}
-                      className={`text-lg shrink-0 transition p-2 -mr-2 ${
-                        project.isPinned ? 'opacity-100' : 'opacity-30 hover:opacity-60'
-                      }`}
-                    >
-                      {project.isPinned
-                        ? <Pin className="size-4 text-primary" />
-                        : <PinOff className="size-4 text-muted-foreground" />
-                      }
-                    </button>
-                  </div>
-                  <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${
-                    project.isActive ? 'text-primary' : 'text-muted-foreground'
-                  }`}>
-                    {project.isActive
-                      ? <>タップしてダッシュボードへ <ArrowRight className="size-3" /></>
-                      : 'タップしてアクティブにする'}
-                  </p>
-                </div>
-
-                {/* アクションエリア */}
-                <div className="px-5 pb-4 flex gap-3 border-t border-border pt-3">
-                  {!project.isActive && (
-                    <button
-                      onClick={() => handleSetActive(project.id)}
-                      className="text-xs text-primary font-medium hover:underline"
-                    >
-                      これをアクティブにする
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(project.id)}
-                    className="text-xs text-destructive border border-destructive/30 px-2.5 py-1 rounded-lg hover:bg-destructive/10 transition ml-auto"
+          <div className="bg-card rounded-2xl border border-border p-5 space-y-1">
+            {renameError && (
+              <p className="text-xs text-destructive px-1 pb-1">{renameError}</p>
+            )}
+            {pinnedProjects.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-muted-foreground px-1 pt-1 pb-1">ピン留め</p>
+                {pinnedProjects.map((p) => (
+                  <div
+                    key={p.id}
+                    onContextMenu={(e) => { e.preventDefault(); setOpenMenuId(openMenuId === p.id ? null : p.id) }}
+                    className="group relative flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/60 cursor-pointer transition"
                   >
-                    削除
-                  </button>
-                </div>
-
-                {/* 振り返りノート集約（メモがあるクエストのみ表示） */}
-                {((['q1', 'q2', 'q3', 'q4', 'q5'] as const).some(
-                  (qid) => project.questNotes?.[qid]?.trim()
-                )) && (
-                  <div className="px-5 pb-5 border-t border-border pt-4">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">📔 振り返りノート</p>
-                    <div className="space-y-3">
-                      {(['q1', 'q2', 'q3', 'q4', 'q5'] as const)
-                        .filter((qid) => project.questNotes?.[qid]?.trim())
-                        .map((qid) => (
-                          <div key={qid}>
-                            <p className="text-xs font-medium text-foreground">
-                              {QUEST_CONFIG[qid]?.title ?? qid}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap line-clamp-3">
-                              {project.questNotes[qid]}
-                            </p>
-                          </div>
-                        ))}
-                    </div>
+                    {renamingId === p.id ? (
+                      <input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRename(p.id)
+                          if (e.key === 'Escape') setRenamingId(null)
+                        }}
+                        onBlur={() => handleRename(p.id)}
+                        autoFocus
+                        className="flex-1 text-sm bg-background border border-primary rounded px-2 py-1 text-foreground focus:outline-none"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 flex-1 min-w-0" onClick={() => handleOpenProject(p.id)}>
+                          <Folder className="size-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-foreground truncate flex-1">{p.title}</span>
+                          {p.isActive && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground shrink-0">アクティブ</span>
+                          )}
+                          {p.status === 'paused' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">途中</span>
+                          )}
+                          {p.status === 'completed' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/40 text-accent-foreground shrink-0">完了</span>
+                          )}
+                          <Pin className="size-3 text-muted-foreground shrink-0" />
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === p.id ? null : p.id) }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition shrink-0"
+                          aria-label="メニュー"
+                        >
+                          <MoreVertical className="size-4 text-muted-foreground" />
+                        </button>
+                      </>
+                    )}
+                    {openMenuId === p.id && renamingId !== p.id && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null) }} />
+                        <div className="absolute right-2 top-full mt-1 z-50 w-44 bg-card border border-border rounded-lg shadow-lg py-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startRename(p) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted text-left"
+                          >
+                            <Pencil className="size-3.5" /> 名前を変更
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTogglePin(p) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted text-left"
+                          >
+                            <PinOff className="size-3.5" /> ピンを外す
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(p.id) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-muted text-left"
+                          >
+                            <Trash2 className="size-3.5" /> 削除
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
+                ))}
+              </>
+            )}
+            {otherProjects.length > 0 && (
+              <>
+                {pinnedProjects.length > 0 && (
+                  <p className="text-xs font-semibold text-muted-foreground px-1 pt-2 pb-1">その他</p>
                 )}
-              </div>
-            ))}
+                {otherProjects.map((p) => (
+                  <div
+                    key={p.id}
+                    onContextMenu={(e) => { e.preventDefault(); setOpenMenuId(openMenuId === p.id ? null : p.id) }}
+                    className="group relative flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/60 cursor-pointer transition"
+                  >
+                    {renamingId === p.id ? (
+                      <input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRename(p.id)
+                          if (e.key === 'Escape') setRenamingId(null)
+                        }}
+                        onBlur={() => handleRename(p.id)}
+                        autoFocus
+                        className="flex-1 text-sm bg-background border border-primary rounded px-2 py-1 text-foreground focus:outline-none"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 flex-1 min-w-0" onClick={() => handleOpenProject(p.id)}>
+                          <Folder className="size-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-foreground truncate flex-1">{p.title}</span>
+                          {p.isActive && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground shrink-0">アクティブ</span>
+                          )}
+                          {p.status === 'paused' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">途中</span>
+                          )}
+                          {p.status === 'completed' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/40 text-accent-foreground shrink-0">完了</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === p.id ? null : p.id) }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition shrink-0"
+                          aria-label="メニュー"
+                        >
+                          <MoreVertical className="size-4 text-muted-foreground" />
+                        </button>
+                      </>
+                    )}
+                    {openMenuId === p.id && renamingId !== p.id && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null) }} />
+                        <div className="absolute right-2 top-full mt-1 z-50 w-44 bg-card border border-border rounded-lg shadow-lg py-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startRename(p) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted text-left"
+                          >
+                            <Pencil className="size-3.5" /> 名前を変更
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTogglePin(p) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted text-left"
+                          >
+                            <Pin className="size-3.5" /> ピン留め
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(p.id) }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-muted text-left"
+                          >
+                            <Trash2 className="size-3.5" /> 削除
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
