@@ -26,13 +26,21 @@ export default async function Home({ searchParams }: Props) {
 
   const { data: activeProject } = await supabase
     .from('project_ideas')
-    .select('id, is_trial')
+    .select('id, is_trial, last_mentor_type, last_custom_mentor_id')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
 
   const activeProjectId = activeProject?.id ?? ''
-  const isTrial = (activeProject as { id?: string; is_trial?: boolean } | null)?.is_trial ?? false
+  const ap = activeProject as {
+    id?: string
+    is_trial?: boolean
+    last_mentor_type?: string
+    last_custom_mentor_id?: string
+  } | null
+  const isTrial = ap?.is_trial ?? false
+  const initialMentorMode = (ap?.last_mentor_type as 'idea' | 'general' | 'custom') ?? 'idea'
+  const initialCustomMentorId = ap?.last_custom_mentor_id ?? undefined
 
   const { data: rows } = await supabase
     .from('quest_progress')
@@ -49,7 +57,13 @@ export default async function Home({ searchParams }: Props) {
   return (
     <main className="min-h-screen bg-background">
       <QuestStoreInitializer quests={initialQuests} />
-      <QuestDashboard activeProjectId={activeProjectId} mentorOpen={mentorOpen} isTrial={isTrial} />
+      <QuestDashboard
+        activeProjectId={activeProjectId}
+        mentorOpen={mentorOpen}
+        isTrial={isTrial}
+        initialMentorMode={initialMentorMode}
+        initialCustomMentorId={initialCustomMentorId}
+      />
     </main>
   )
 }

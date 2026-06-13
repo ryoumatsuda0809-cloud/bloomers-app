@@ -14,6 +14,8 @@ export type ProjectIdea = {
   status: string
   createdAt: string
   questNotes: Record<string, string>
+  lastMentorType?: string
+  lastCustomMentorId?: string
 }
 
 export async function saveProjectIdea(
@@ -62,6 +64,8 @@ export async function getProjectIdeas(): Promise<ProjectIdea[]> {
     status: row.status ?? 'active',
     createdAt: row.created_at,
     questNotes: (row.quest_notes ?? {}) as Record<string, string>,
+    lastMentorType: row.last_mentor_type ?? 'idea',
+    lastCustomMentorId: row.last_custom_mentor_id ?? undefined,
   }))
 }
 
@@ -231,4 +235,28 @@ export async function saveQuestNote(
 
   if (error) return { error: 'メモの保存に失敗しました。' }
   return { success: true }
+}
+
+export async function saveLastMentor(
+  projectId: string,
+  mentorType: 'idea' | 'general' | 'custom',
+  customMentorId?: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '認証エラーが発生しました。' }
+  try {
+    const { error } = await supabase
+      .from('project_ideas')
+      .update({
+        last_mentor_type: mentorType,
+        last_custom_mentor_id: mentorType === 'custom' ? (customMentorId ?? null) : null,
+      })
+      .eq('id', projectId)
+      .eq('user_id', user.id)
+    if (error) return { error: error.message }
+    return { success: true }
+  } catch {
+    return { error: '最後のメンターの保存に失敗しました。' }
+  }
 }

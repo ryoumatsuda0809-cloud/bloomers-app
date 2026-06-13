@@ -13,14 +13,17 @@ import { PartyPopper, Sprout } from 'lucide-react'
 import MentorPanel from '@/components/quest/MentorPanel'
 import AppShell from '@/components/layout/AppShell'
 import { getCustomMentors, type CustomMentor } from '@/app/actions/custom-mentors'
+import { saveLastMentor } from '@/app/actions/projects'
 
 type QuestDashboardProps = {
   activeProjectId: string
   mentorOpen?: boolean
   isTrial?: boolean
+  initialMentorMode?: 'idea' | 'general' | 'custom'
+  initialCustomMentorId?: string
 }
 
-export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial }: QuestDashboardProps) {
+export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial, initialMentorMode, initialCustomMentorId }: QuestDashboardProps) {
   const router = useRouter()
   const quests = useQuestStore((state) => state.quests)
   const startQuest = useQuestStore((state) => state.startQuest)
@@ -37,19 +40,31 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial }:
     useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [gitHubRepoUrl, setGitHubRepoUrl] = useState<string>('')
 
-  const [mentorMode, setMentorMode] = useState<'idea' | 'general' | 'custom'>('idea')
-  const [customMentorId, setCustomMentorId] = useState<string | undefined>(undefined)
+  const [mentorMode, setMentorMode] = useState<'idea' | 'general' | 'custom'>(initialMentorMode ?? 'idea')
+  const [customMentorId, setCustomMentorId] = useState<string | undefined>(initialCustomMentorId)
   const [customMentors, setCustomMentors] = useState<CustomMentor[]>([])
 
   useEffect(() => {
     getCustomMentors()
-      .then(setCustomMentors)
+      .then((list) => {
+        setCustomMentors(list)
+        if (mentorMode === 'custom' && customMentorId && !list.some((cm) => cm.id === customMentorId)) {
+          setMentorMode('idea')
+          setCustomMentorId(undefined)
+        }
+      })
       .catch(() => setCustomMentors([]))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleMentorChange = (mode: 'idea' | 'general' | 'custom', cmId?: string) => {
     setMentorMode(mode)
     setCustomMentorId(mode === 'custom' ? cmId : undefined)
+    saveLastMentor(activeProjectId, mode, cmId)
+      .then((res) => {
+        if (res.error) console.error('[QuestDashboard] 最後のメンター保存に失敗:', res.error)
+      })
+      .catch((e) => console.error('[QuestDashboard] 最後のメンター保存に失敗:', e))
   }
 
   const handleGitHubSave = async () => {
