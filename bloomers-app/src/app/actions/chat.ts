@@ -337,21 +337,29 @@ export async function clearChatHistory(): Promise<void> {
     .eq('project_id', activeProject.id)
 }
 
+export type MentorType = 'idea' | 'general' | 'custom' | 'quest'
+
 export async function getMentorHistory(
   projectId: string,
-  questId: string
+  questId: string,
+  mentorType?: MentorType
 ): Promise<ChatMessage[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('chat_messages')
     .select('*')
     .eq('user_id', user.id)
     .eq('project_id', projectId)
     .eq('quest_id', questId)
-    .order('created_at', { ascending: true })
+
+  if (mentorType !== undefined) {
+    query = query.eq('mentor_type', mentorType)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: true })
 
   if (error) return []
 
@@ -367,7 +375,9 @@ export async function saveMentorMessage(
   projectId: string,
   questId: string,
   role: 'user' | 'assistant',
-  content: string
+  content: string,
+  mentorType: MentorType = 'idea',
+  customMentorId?: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -379,6 +389,8 @@ export async function saveMentorMessage(
     quest_id: questId,
     role,
     content,
+    mentor_type: mentorType,
+    custom_mentor_id: customMentorId ?? null,
   })
 
   if (error) return { error: error.message }

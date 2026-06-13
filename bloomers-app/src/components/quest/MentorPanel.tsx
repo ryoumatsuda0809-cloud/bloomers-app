@@ -8,10 +8,12 @@ import {
   getMentorContext,
   generateMentorSystemPrompt,
   generateIdeaMentorSystemPrompt,
+  generateGeneralMentorSystemPrompt,
+  generateCustomMentorSystemPrompt,
   sendMentorMessage,
   generateStuckOptions,
 } from '@/app/actions/mentor-panel'
-import { getMentorHistory, saveMentorMessage } from '@/app/actions/chat'
+import { getMentorHistory, saveMentorMessage, type MentorType } from '@/app/actions/chat'
 import { MENTOR_TEMPERATURE } from '@/lib/mentor-base'
 
 type Message = {
@@ -26,7 +28,8 @@ interface MentorPanelProps {
   questTitle: string
   stepTitle?: string
   projectId: string
-  mode?: 'idea' | 'quest'
+  mode?: 'idea' | 'quest' | 'general' | 'custom'
+  customMentorId?: string
   initialOpen?: boolean
   desktopOpen?: boolean
   onDesktopClose?: () => void
@@ -60,6 +63,7 @@ export default function MentorPanel({
   stepTitle,
   projectId,
   mode = 'quest',
+  customMentorId,
   initialOpen = false,
   desktopOpen,
   onDesktopClose,
@@ -91,6 +95,12 @@ export default function MentorPanel({
       if (mode === 'idea') {
         const { prompt, error } = await generateIdeaMentorSystemPrompt(questTitle)
         setSystemPrompt(prompt && !error ? prompt : FALLBACK_IDEA_SYSTEM_PROMPT)
+      } else if (mode === 'general') {
+        const { prompt, error } = await generateGeneralMentorSystemPrompt()
+        setSystemPrompt(prompt && !error ? prompt : FALLBACK_SYSTEM_PROMPT)
+      } else if (mode === 'custom' && customMentorId) {
+        const { prompt, error } = await generateCustomMentorSystemPrompt(customMentorId)
+        setSystemPrompt(prompt && !error ? prompt : FALLBACK_SYSTEM_PROMPT)
       } else {
         const context = await getMentorContext(projectId, questTitle, stepTitle ?? '')
         const { prompt, error } = await generateMentorSystemPrompt(questTitle, context)
@@ -100,7 +110,7 @@ export default function MentorPanel({
 
     init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questId, projectId, mode])
+  }, [questId, projectId, mode, customMentorId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -109,7 +119,7 @@ export default function MentorPanel({
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const history = await getMentorHistory(projectId, questId)
+        const history = await getMentorHistory(projectId, questId, mode as MentorType)
         if (history.length > 0) {
           setMessages(
             history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content }))
@@ -125,7 +135,7 @@ export default function MentorPanel({
     }
     loadHistory()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questId, projectId])
+  }, [questId, projectId, mode])
 
   const handleStuck = async () => {
     if (isLoading || isGeneratingOptions) return
@@ -155,12 +165,22 @@ export default function MentorPanel({
     setIsLoading(true)
     setMessages((prev) => [...prev, { role: 'user', content: text }])
 
-    saveMentorMessage(projectId, questId, 'user', text).catch(() => {})
+    const effectiveMentorType = mode as MentorType
+    const userSaveRes = await saveMentorMessage(
+      projectId, questId, 'user', text,
+      effectiveMentorType,
+      mode === 'custom' ? customMentorId : undefined
+    )
+    if (userSaveRes.error) console.error('[MentorPanel] ユーザーメッセージの保存に失敗:', userSaveRes.error)
 
     const prompt = systemPrompt || FALLBACK_SYSTEM_PROMPT
     const history = messages.filter((m) => !m.isGreeting).map((m) => ({ role: m.role, content: m.content }))
 
-    const temperature = mode === 'idea' ? MENTOR_TEMPERATURE.dashboardIdea : MENTOR_TEMPERATURE.quest
+    const temperature =
+      mode === 'quest' ? MENTOR_TEMPERATURE.quest :
+      mode === 'idea' ? MENTOR_TEMPERATURE.dashboardIdea :
+      mode === 'general' ? MENTOR_TEMPERATURE.general :
+      MENTOR_TEMPERATURE.custom
     const { reply, error } = await sendMentorMessage(text, history, prompt, temperature)
 
     const assistantContent = error || !reply
@@ -170,7 +190,12 @@ export default function MentorPanel({
     setMessages((prev) => [...prev, { role: 'assistant', content: assistantContent }])
 
     if (!error && reply) {
-      saveMentorMessage(projectId, questId, 'assistant', reply).catch(() => {})
+      const assistantSaveRes = await saveMentorMessage(
+        projectId, questId, 'assistant', reply,
+        effectiveMentorType,
+        mode === 'custom' ? customMentorId : undefined
+      )
+      if (assistantSaveRes.error) console.error('[MentorPanel] アシスタントメッセージの保存に失敗:', assistantSaveRes.error)
     }
 
     setIsLoading(false)

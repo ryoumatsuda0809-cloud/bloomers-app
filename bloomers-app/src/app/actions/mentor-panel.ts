@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { searchKnowledge } from '@/app/actions/knowledge'
 import { searchUserKnowledge } from '@/app/actions/user-knowledge'
-import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY, MENTOR_TEMPERATURE } from '@/lib/mentor-base'
+import { BASE_SYSTEM_PROMPT, FINAL_PRIORITY, MENTOR_TEMPERATURE, toneBlock } from '@/lib/mentor-base'
+import { getCustomMentor } from '@/app/actions/custom-mentors'
 
 export type MentorContext = {
   who: string
@@ -192,4 +193,23 @@ export async function generateIdeaMentorSystemPrompt(
 
   const prompt = BASE_SYSTEM_PROMPT + ideaRole + FINAL_PRIORITY
   return { prompt }
+}
+
+export async function generateGeneralMentorSystemPrompt(): Promise<{ prompt?: string; error?: string }> {
+  const generalRole = `\n\n【役割：なんでも相談メンター】
+あなたは「ちょっと頼れる先輩」くらいの距離感の相談相手です。友達ほどゆるくなく、先生ほど堅くない。
+
+- 入口は広い。どんな話題でも、まず受け止めてください。「それは別の場所で聞いて」と突き放さない。他のメンターへ案内して、たらい回しにしない。何を持ってきても、ここで一緒に向き合う。
+- 話を整理してあげる。ユーザーが漠然と困っている時は、「つまり〇〇ということ？」とモヤモヤを言語化してください。考えがまとまっていない状態を一緒に整理する。答えを急がず、まず「何に困っているのか」を一緒に掴む。`
+  const styleBlock = '\n\n【回答スタイル：ライト】短く要点だけ（3〜5文程度）。答えから直接書き始めてください。'
+  const prompt = BASE_SYSTEM_PROMPT + generalRole + styleBlock + toneBlock('balanced') + FINAL_PRIORITY
+  return { prompt }
+}
+
+export async function generateCustomMentorSystemPrompt(
+  customMentorId: string
+): Promise<{ prompt?: string; error?: string }> {
+  const mentor = await getCustomMentor(customMentorId)
+  if (!mentor) return { error: 'カスタムメンターが見つかりません' }
+  return { prompt: mentor.systemPrompt }
 }
