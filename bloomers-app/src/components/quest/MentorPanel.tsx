@@ -116,9 +116,11 @@ export default function MentorPanel({
           )
         } else if (isTrial) {
           setMessages([{ role: 'assistant', content: getTrialGuide(questTitle), isGreeting: true }])
+        } else {
+          setMessages([])
         }
       } catch {
-        // 読み込み失敗時は空のまま新規開始
+        setMessages([])
       }
     }
     loadHistory()
