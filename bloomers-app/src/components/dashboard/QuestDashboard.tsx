@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuestStore } from '@/store/useQuestStore'
 import QuestCard from '@/components/dashboard/QuestCard'
@@ -12,6 +12,7 @@ import { createRepository } from '@/app/actions/github'
 import { PartyPopper, Sprout } from 'lucide-react'
 import MentorPanel from '@/components/quest/MentorPanel'
 import AppShell from '@/components/layout/AppShell'
+import { getCustomMentors, type CustomMentor } from '@/app/actions/custom-mentors'
 
 type QuestDashboardProps = {
   activeProjectId: string
@@ -35,6 +36,21 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial }:
   const [gitHubSaveStatus, setGitHubSaveStatus] =
     useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [gitHubRepoUrl, setGitHubRepoUrl] = useState<string>('')
+
+  const [mentorMode, setMentorMode] = useState<'idea' | 'general' | 'custom'>('idea')
+  const [customMentorId, setCustomMentorId] = useState<string | undefined>(undefined)
+  const [customMentors, setCustomMentors] = useState<CustomMentor[]>([])
+
+  useEffect(() => {
+    getCustomMentors()
+      .then(setCustomMentors)
+      .catch(() => setCustomMentors([]))
+  }, [])
+
+  const handleMentorChange = (mode: 'idea' | 'general' | 'custom', cmId?: string) => {
+    setMentorMode(mode)
+    setCustomMentorId(mode === 'custom' ? cmId : undefined)
+  }
 
   const handleGitHubSave = async () => {
     setGitHubSaveStatus('loading')
@@ -101,8 +117,12 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial }:
             questId="dashboard"
             questTitle="アイデアを育てよう"
             projectId={activeProjectId}
-            mode="idea"
+            mode={mentorMode}
+            customMentorId={customMentorId}
+            customMentors={customMentors}
+            onMentorChange={handleMentorChange}
             initialOpen={mentorOpen}
+            isTrial={isTrial}
           />
         ) : undefined
       }
