@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ArrowUp, LifeBuoy, ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowUp, LifeBuoy, ChevronUp, ChevronDown, Check, Lightbulb, MessageCircle, Sparkles } from 'lucide-react'
 import { useSidebar } from '@/components/providers/SidebarProvider'
 import {
   getMentorContext,
@@ -83,6 +83,8 @@ export default function MentorPanel({
   const [isLoading, setIsLoading] = useState(false)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<'gemini'>('gemini')
+  const [openDropdown, setOpenDropdown] = useState<'mentor' | 'model' | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // initialOpen=true なら1回だけ展開し、URLから ?mentorOpen=true を除去する
@@ -216,6 +218,18 @@ export default function MentorPanel({
     else if (v.startsWith('custom:')) onMentorChange('custom', v.slice(7))
   }
 
+  const mentorLabel =
+    mode === 'general' ? 'なんでも相談' :
+    mode === 'custom' ? (customMentors.find((c) => c.id === customMentorId)?.name ?? 'カスタム') :
+    mode === 'quest' ? 'メンター' :
+    'アイデア出し'
+
+  const mentorOptions = [
+    { value: 'idea', label: 'アイデア出し', icon: Lightbulb },
+    { value: 'general', label: 'なんでも相談', icon: MessageCircle },
+    ...customMentors.map((cm) => ({ value: `custom:${cm.id}`, label: cm.name, icon: Sparkles })),
+  ]
+
   return (
     <>
       {/* デスクトップ（xl以上）：右カラム常駐（desktopOpen制御対応） */}
@@ -224,29 +238,7 @@ export default function MentorPanel({
           <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base">🌸</span>
-              {onMentorChange ? (
-                <select
-                  value={selectValue}
-                  onChange={(e) => handleSelectChange(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs font-semibold bg-transparent text-foreground border border-border rounded-md px-2 py-1 focus:outline-none focus:border-primary cursor-pointer max-w-[160px]"
-                >
-                  <option value="idea">アイデア出し</option>
-                  <option value="general">なんでも相談</option>
-                  {customMentors.length > 0 && (
-                    <optgroup label="カスタム">
-                      {customMentors.map((cm) => (
-                        <option key={cm.id} value={`custom:${cm.id}`}>{cm.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              ) : (
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground">メンター</p>
-                  <p className="text-xs text-muted-foreground truncate">{questTitle}</p>
-                </div>
-              )}
+              <p className="text-xs font-semibold text-foreground truncate">{mentorLabel}</p>
             </div>
             {onDesktopClose && (
               <button
@@ -315,15 +307,7 @@ export default function MentorPanel({
             <div ref={bottomRef} />
           </div>
           <div className="border-t border-border p-3 shrink-0">
-            <div className="flex gap-2">
-              <button
-                onClick={handleStuck}
-                disabled={isLoading || isGeneratingOptions}
-                title="詰まったら押す"
-                className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
-              >
-                <LifeBuoy className="size-4" />
-              </button>
+            <div className="bg-muted/40 rounded-2xl border border-border">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -336,16 +320,92 @@ export default function MentorPanel({
                 placeholder="何でも聞いてください..."
                 rows={1}
                 disabled={isLoading}
-                className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
+                className="w-full bg-transparent border-none px-3 py-2.5 text-xs text-foreground resize-none focus:outline-none max-h-24 disabled:opacity-50"
               />
-              <button
-                onClick={() => handleSend()}
-                disabled={!input.trim() || isLoading}
-                className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
-                aria-label="送信"
-              >
-                <ArrowUp className="size-3" />
-              </button>
+              <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {onMentorChange && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === 'mentor' ? null : 'mentor')}
+                        className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                      >
+                        <Sparkles className="size-3 text-muted-foreground" />
+                        <span>{mentorLabel}</span>
+                        <ChevronDown className="size-3 opacity-50" />
+                      </button>
+                      {openDropdown === 'mentor' && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                          <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[10rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                            {mentorOptions.map((opt) => {
+                              const Icon = opt.icon
+                              const isSel = selectValue === opt.value
+                              return (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { handleSelectChange(opt.value); setOpenDropdown(null) }}
+                                  className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                                >
+                                  <span className="flex items-center gap-2"><Icon className="size-3.5" />{opt.label}</span>
+                                  {isSel && <Check className="size-3.5 text-primary" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpenDropdown(openDropdown === 'model' ? null : 'model')}
+                      className="flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                    >
+                      <span>Gemini</span>
+                      <ChevronDown className="size-3 opacity-50" />
+                    </button>
+                    {openDropdown === 'model' && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                        <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[11rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                          <button
+                            onClick={() => { setSelectedModel('gemini'); setOpenDropdown(null) }}
+                            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                          >
+                            <span className="flex items-center gap-2"><Sparkles className="size-3.5" />Gemini</span>
+                            {selectedModel === 'gemini' && <Check className="size-3.5 text-primary" />}
+                          </button>
+                          {['GPT', 'Claude'].map((m) => (
+                            <div key={m} className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/50 cursor-not-allowed">
+                              <span className="flex items-center gap-2"><Sparkles className="size-3.5" />{m}</span>
+                              <span className="text-[10px]">準備中</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={handleStuck}
+                    disabled={isLoading || isGeneratingOptions}
+                    title="詰まったら押す"
+                    className="w-7 h-7 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
+                  >
+                    <LifeBuoy className="size-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() || isLoading}
+                    className="w-7 h-7 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition"
+                    aria-label="送信"
+                  >
+                    <ArrowUp className="size-3" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
@@ -371,26 +431,7 @@ export default function MentorPanel({
               <div className="flex items-center justify-between px-4 py-2 border-b border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-base">🌸</span>
-                  {onMentorChange ? (
-                    <select
-                      value={selectValue}
-                      onChange={(e) => handleSelectChange(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs font-semibold bg-card text-foreground border border-border rounded-md px-2 py-1 focus:outline-none focus:border-primary cursor-pointer"
-                    >
-                      <option value="idea">アイデア出し</option>
-                      <option value="general">なんでも相談</option>
-                      {customMentors.length > 0 && (
-                        <optgroup label="カスタム">
-                          {customMentors.map((cm) => (
-                            <option key={cm.id} value={`custom:${cm.id}`}>{cm.name}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
-                  ) : (
-                    <span className="text-sm font-semibold text-foreground">メンター</span>
-                  )}
+                  <span className="text-xs font-semibold text-foreground">{mentorLabel}</span>
                 </div>
                 <button
                   onClick={() => { setIsExpanded(false); setIsFocused(false) }}
@@ -475,15 +516,7 @@ export default function MentorPanel({
                   メンターを開く
                 </button>
               )}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleStuck}
-                  disabled={isLoading || isGeneratingOptions}
-                  title="詰まったら押す"
-                  className="w-8 h-8 flex items-center justify-center shrink-0 rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
-                >
-                  <LifeBuoy className="size-4" />
-                </button>
+              <div className="bg-muted/40 rounded-2xl border border-border">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -497,16 +530,92 @@ export default function MentorPanel({
                   placeholder="何でも聞いてください..."
                   rows={1}
                   disabled={isLoading}
-                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:border-primary max-h-24 disabled:opacity-50 bg-background"
+                  className="w-full bg-transparent border-none px-3 py-2.5 text-xs text-foreground resize-none focus:outline-none max-h-24 disabled:opacity-50"
                 />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={!input.trim() || isLoading}
-                  className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0 self-end"
-                  aria-label="送信"
-                >
-                  <ArrowUp className="size-3" />
-                </button>
+                <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {onMentorChange && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'mentor' ? null : 'mentor')}
+                          className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                        >
+                          <Sparkles className="size-3 text-muted-foreground" />
+                          <span>{mentorLabel}</span>
+                          <ChevronDown className="size-3 opacity-50" />
+                        </button>
+                        {openDropdown === 'mentor' && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                            <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[10rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                              {mentorOptions.map((opt) => {
+                                const Icon = opt.icon
+                                const isSel = selectValue === opt.value
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { handleSelectChange(opt.value); setOpenDropdown(null) }}
+                                    className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                                  >
+                                    <span className="flex items-center gap-2"><Icon className="size-3.5" />{opt.label}</span>
+                                    {isSel && <Check className="size-3.5 text-primary" />}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === 'model' ? null : 'model')}
+                        className="flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                      >
+                        <span>Gemini</span>
+                        <ChevronDown className="size-3 opacity-50" />
+                      </button>
+                      {openDropdown === 'model' && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                          <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[11rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                            <button
+                              onClick={() => { setSelectedModel('gemini'); setOpenDropdown(null) }}
+                              className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                            >
+                              <span className="flex items-center gap-2"><Sparkles className="size-3.5" />Gemini</span>
+                              {selectedModel === 'gemini' && <Check className="size-3.5 text-primary" />}
+                            </button>
+                            {['GPT', 'Claude'].map((m) => (
+                              <div key={m} className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/50 cursor-not-allowed">
+                                <span className="flex items-center gap-2"><Sparkles className="size-3.5" />{m}</span>
+                                <span className="text-[10px]">準備中</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={handleStuck}
+                      disabled={isLoading || isGeneratingOptions}
+                      title="詰まったら押す"
+                      className="w-7 h-7 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent/20 hover:text-primary transition disabled:opacity-50"
+                    >
+                      <LifeBuoy className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleSend()}
+                      disabled={!input.trim() || isLoading}
+                      className="w-7 h-7 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition"
+                      aria-label="送信"
+                    >
+                      <ArrowUp className="size-3" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
