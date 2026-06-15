@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowUp, Plus, MessageCircle, ArrowLeft, MoreHorizontal,
-  Pencil, Pin, Trash2, Paperclip, RefreshCw, X, FileText, Sprout, Bot, Settings, ChevronRight,
+  Pencil, Pin, Trash2, Paperclip, X, FileText, Sprout, Bot, Settings, ChevronRight,
   ChevronLeft, GripVertical, PanelLeft,
+  Check, ChevronDown, Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -79,10 +80,10 @@ export default function MentorPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
-  const [showPlusMenu, setShowPlusMenu] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<'mentor' | 'model' | null>(null)
+  const [selectedModel, setSelectedModel] = useState<'gemini'>('gemini')
   const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string } | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
-  const [showModeChangeDialog, setShowModeChangeDialog] = useState(false)
   // サイドバー開閉・幅（SSRミスマッチ回避のためデフォルト値で初期化）
   const [sidebarWidth, setSidebarWidth] = useState(SB_DEFAULT)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -362,7 +363,6 @@ export default function MentorPage() {
   }
 
   const handleChangeMode = async (mode: MentorMode) => {
-    setShowModeChangeDialog(false)
     if (!activeConvId) return
 
     const prevMode = activeMode
@@ -696,20 +696,6 @@ export default function MentorPage() {
 
             <div className="border-t border-border p-3 shrink-0">
               <div className="max-w-3xl mx-auto">
-                <div className="flex items-center gap-1 mb-2">
-                  <button
-                    onClick={() => handleChangeStyle('light')}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition ${activeStyle === 'light' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-                  >
-                    ライト
-                  </button>
-                  <button
-                    onClick={() => handleChangeStyle('deep')}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition ${activeStyle === 'deep' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-                  >
-                    深掘り
-                  </button>
-                </div>
                 {attachment && (
                   <div className="mb-2 flex items-center gap-2 bg-muted rounded-lg px-3 py-2 w-fit">
                     <FileText className="size-4 text-muted-foreground" />
@@ -726,46 +712,7 @@ export default function MentorPage() {
                 {attachError && (
                   <p className="mb-2 text-xs text-destructive">{attachError}</p>
                 )}
-                <div className="flex gap-2 items-end">
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowPlusMenu((v) => !v)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-card hover:bg-muted transition text-muted-foreground"
-                      aria-label="メニュー"
-                    >
-                      <Plus className="size-4" />
-                    </button>
-                    {showPlusMenu && (
-                      <>
-                        <div className="fixed inset-0 z-30" onClick={() => setShowPlusMenu(false)} />
-                        <div className="absolute bottom-12 left-0 z-40 w-52 bg-card border border-border rounded-xl shadow-lg py-1">
-                          <button
-                            onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click() }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition text-left"
-                          >
-                            <Paperclip className="size-4" />
-                            ファイルを添付
-                          </button>
-                          <button
-                            onClick={() => { setShowPlusMenu(false); setShowModeChangeDialog(true) }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition text-left"
-                          >
-                            <RefreshCw className="size-4" />
-                            メンターの種類を変える
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,application/pdf"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-
+                <div className="bg-muted/40 rounded-2xl border border-border">
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -778,16 +725,113 @@ export default function MentorPage() {
                     placeholder="メッセージを入力..."
                     rows={1}
                     disabled={isLoading}
-                    className="flex-1 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground resize-none focus:outline-none focus:border-primary max-h-32 disabled:opacity-50 bg-background"
+                    className="w-full bg-transparent border-none px-3 py-3 text-sm text-foreground resize-none focus:outline-none max-h-32 disabled:opacity-50"
                   />
-                  <button
-                    onClick={() => handleSend()}
-                    disabled={(!input.trim() && !attachment) || isLoading}
-                    className="w-10 h-10 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0"
-                    aria-label="送信"
-                  >
-                    <ArrowUp className="size-4" />
-                  </button>
+                  <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                        title="ファイルを添付"
+                      >
+                        <Paperclip className="size-4" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,application/pdf"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {/* メンター種類＋答え方ドロップダウン */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'mentor' ? null : 'mentor')}
+                          className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                        >
+                          <span>{MODE_LABELS[activeMode].label}</span>
+                          <ChevronDown className="size-3 opacity-50" />
+                        </button>
+                        {openDropdown === 'mentor' && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                            <div className="absolute bottom-full right-0 mb-1 z-50 min-w-[12rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                              <p className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">メンター</p>
+                              {(['idea', 'general', 'custom'] as MentorMode[]).map((m) => {
+                                const Icon = MODE_LABELS[m].icon
+                                return (
+                                  <button
+                                    key={m}
+                                    onClick={() => { handleChangeMode(m); setOpenDropdown(null) }}
+                                    className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                                  >
+                                    <span className="flex items-center gap-2"><Icon className="size-3.5" />{MODE_LABELS[m].label}</span>
+                                    {activeMode === m && <Check className="size-3.5 text-primary" />}
+                                  </button>
+                                )
+                              })}
+                              <div className="h-px bg-border my-1" />
+                              <p className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">答え方</p>
+                              {([
+                                { v: 'light', label: 'ライト' },
+                                { v: 'deep', label: '深掘り' },
+                              ] as const).map((o) => (
+                                <button
+                                  key={o.v}
+                                  onClick={() => { handleChangeStyle(o.v); setOpenDropdown(null) }}
+                                  className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                                >
+                                  <span>{o.label}</span>
+                                  {activeStyle === o.v && <Check className="size-3.5 text-primary" />}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* モデルドロップダウン */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'model' ? null : 'model')}
+                          className="flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded-lg hover:bg-muted transition"
+                        >
+                          <span>Gemini</span>
+                          <ChevronDown className="size-3 opacity-50" />
+                        </button>
+                        {openDropdown === 'model' && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
+                            <div className="absolute bottom-full right-0 mb-1 z-50 min-w-[11rem] bg-card border border-border rounded-xl shadow-lg p-1">
+                              <button
+                                onClick={() => { setSelectedModel('gemini'); setOpenDropdown(null) }}
+                                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-muted transition text-left"
+                              >
+                                <span className="flex items-center gap-2"><Sparkles className="size-3.5" />Gemini</span>
+                                {selectedModel === 'gemini' && <Check className="size-3.5 text-primary" />}
+                              </button>
+                              {['GPT', 'Claude'].map((m) => (
+                                <div key={m} className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/50 cursor-not-allowed">
+                                  <span className="flex items-center gap-2"><Sparkles className="size-3.5" />{m}</span>
+                                  <span className="text-[10px]">準備中</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* 送信ボタン */}
+                      <button
+                        onClick={() => handleSend()}
+                        disabled={(!input.trim() && !attachment) || isLoading}
+                        className="w-9 h-9 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-xl flex items-center justify-center transition shrink-0"
+                        aria-label="送信"
+                      >
+                        <ArrowUp className="size-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -849,38 +893,6 @@ export default function MentorPage() {
               <Settings className="size-4" />
               <span className="text-sm">カスタムメンターを管理</span>
             </button>
-            <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* メンター種類変更ダイアログ */}
-      <AlertDialog open={showModeChangeDialog} onOpenChange={setShowModeChangeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>メンターの種類を変える</AlertDialogTitle>
-            <AlertDialogDescription>
-              このチャットのメンターを切り替えます。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-            {(['idea', 'general'] as MentorMode[]).map((mode) => {
-              const Icon = MODE_LABELS[mode].icon
-              return (
-                <button
-                  key={mode}
-                  onClick={() => handleChangeMode(mode)}
-                  className={`w-full h-auto py-3.5 px-4 rounded-xl text-left flex items-center gap-3 transition-colors ${
-                    activeMode === mode
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:border-primary hover:bg-accent/20 text-foreground'
-                  }`}
-                >
-                  <Icon className="size-5" />
-                  <span className="font-medium text-sm">{MODE_LABELS[mode].label}</span>
-                </button>
-              )
-            })}
             <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
