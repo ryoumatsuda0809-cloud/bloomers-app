@@ -197,58 +197,37 @@ create policy "自分の進捗のみ読み書き可"
 ⬜ 独自ドメイン設定
 ```
 
-<task>
-CLAUDE.md にBloomerプロジェクトの確定済み設計方針を追記する。
-ファイルが存在しない場合は新規作成する。
-</task>
+---
 
-<strict_constraints>
-- CLAUDE.md 以外のファイルは一切触れない
-- 既存の CLAUDE.md の内容は上書きせず末尾に追記する
-</strict_constraints>
+## 🎨 UI/UXデザイン方針
 
-<content_to_add>
-## UI/UXデザイン方針（2026年5月確定）
-
-### カラーパレット
+### カラーパレット（globals.css の oklch 値）
 ライトモード:
-  background : oklch(0.979 0.005 85)   warm cream
-  card       : oklch(1 0 0)
-  foreground : oklch(0.145 0.005 75)
-  primary    : oklch(0.450 0.200 355)  deep rose
-  accent     : oklch(0.830 0.110 340)  cotton pink
+- background: oklch(0.979 0.005 85) — warm cream
+- card: oklch(1 0 0)
+- foreground: oklch(0.145 0.005 75)
+- primary: oklch(0.450 0.200 355) — deep rose
+- accent: oklch(0.830 0.110 340) — cotton pink
 
 ダークモード:
-  background : oklch(0.220 0.008 75)   warm gray
-  card       : oklch(0.260 0.008 75)
-  primary    : oklch(0.830 0.110 340)  cotton pink
-  muted      : oklch(0.290 0.008 75)
-  border     : oklch(0.320 0.008 75)
+- background: oklch(0.220 0.008 75) — warm gray
+- card: oklch(0.260 0.008 75)
+- primary: oklch(0.830 0.110 340) — cotton pink
+- muted: oklch(0.290 0.008 75)
+- border: oklch(0.320 0.008 75)
 
 ### フォント
-  見出し（font-heading） : Source Serif 4 + Noto Serif JP
-  本文（font-sans）      : DM Sans
+- 見出し（font-heading）: Source Serif 4 + Noto Serif JP
+- 本文（font-sans）: DM Sans
 
 ### アイコン
-  lucide-react で全統一（線だけスタイル）
-  🌸（ロゴ）のみ絵文字として残す
-  他の絵文字は全て Lucide Icon に置換済み
+- lucide-react で全統一（線だけのスタイル）
+- 🌸（ロゴ）のみ絵文字として残す。他の絵文字は全て Lucide Icon に置換する
 
 ### 実装ルール
-  - ロジック・Server Actions・Zustand store は UI 修正時に触れない
-  - 変更後は必ず npx tsc --noEmit を実行してエラー 0 を確認する
-  - npm install 禁止（既存パッケージのみ使用）
-  - activeQuest 変数は将来のメンターチャット機能のため温存する
-  - UIの試作はClaude.ai Web版で行い、完成後にClaude Codeで実装する
+- ロジック・Server Actions・Zustand store は UI 修正時に触れない
+- 変更後は必ず npx tsc --noEmit を実行してエラー 0 を確認する
+- npm install 禁止（既存パッケージのみ使用）
+- activeQuest 変数は将来のメンターチャット機能のため温存する
+- UIの試作は Claude.ai Web版で行い、完成後に Claude Code で実装する
 
-### 保留中タスク
-  - github.ts の実装（インビジブルGit基盤）
-</content_to_add>
-
-<verification_steps>
-1. cat CLAUDE.md で追記内容が正しく入っているか確認
-</verification_steps>
-
-<output_format>
-1. CLAUDE.md の末尾10行を表示
-</output_format>
