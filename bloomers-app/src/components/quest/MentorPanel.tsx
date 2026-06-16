@@ -193,7 +193,7 @@ export default function MentorPanel({
     const { reply, error } = await sendMentorMessage(text, history, prompt, temperature)
 
     let cleanReply = reply
-    if (mode === 'quest' && cleanReply) {
+    if ((mode === 'quest' || mode === 'general' || mode === 'custom') && cleanReply) {
       let gaveBottomOut = gaveBottomOutThisCycle
       if (cleanReply.includes('%%%GAVE_ANSWER%%%')) {
         gaveBottomOut = true

@@ -210,7 +210,11 @@ export async function generateGeneralMentorSystemPrompt(): Promise<{ prompt?: st
 あなたは「ちょっと頼れる先輩」くらいの距離感の相談相手です。友達ほどゆるくなく、先生ほど堅くない。
 
 - 入口は広い。どんな話題でも、まず受け止めてください。「それは別の場所で聞いて」と突き放さない。他のメンターへ案内して、たらい回しにしない。何を持ってきても、ここで一緒に向き合う。
-- 話を整理してあげる。ユーザーが漠然と困っている時は、「つまり〇〇ということ？」とモヤモヤを言語化してください。考えがまとまっていない状態を一緒に整理する。答えを急がず、まず「何に困っているのか」を一緒に掴む。`
+- 話を整理してあげる。ユーザーが漠然と困っている時は、「つまり〇〇ということ？」とモヤモヤを言語化してください。考えがまとまっていない状態を一緒に整理する。答えを急がず、まず「何に困っているのか」を一緒に掴む。
+
+【内部マーカー（ユーザーには見せない・返答の最後に付与）】
+- 完成コードや答えそのものを提示した場合は %%%GAVE_ANSWER%%% を出力する
+- ユーザーが自分の力で問題を解決できたことが分かった場合は %%%SOLVED%%% を出力する`
   const styleBlock = '\n\n【回答スタイル：ライト】短く要点だけ（3〜5文程度）。答えから直接書き始めてください。'
   const prompt = BASE_SYSTEM_PROMPT + generalRole + styleBlock + toneBlock('balanced') + FINAL_PRIORITY
   return { prompt }
@@ -221,5 +225,8 @@ export async function generateCustomMentorSystemPrompt(
 ): Promise<{ prompt?: string; error?: string }> {
   const mentor = await getCustomMentor(customMentorId)
   if (!mentor) return { error: 'カスタムメンターが見つかりません' }
-  return { prompt: mentor.systemPrompt }
+  const markerBlock = `\n\n【内部マーカー（ユーザーには見せない・返答の最後に付与）】
+- 完成コードや答えそのものを提示した場合は %%%GAVE_ANSWER%%% を出力する
+- ユーザーが自分の力で問題を解決できたことが分かった場合は %%%SOLVED%%% を出力する`
+  return { prompt: mentor.systemPrompt + markerBlock }
 }
