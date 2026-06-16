@@ -14,6 +14,7 @@ import {
   generateStuckOptions,
 } from '@/app/actions/mentor-panel'
 import { getMentorHistory, saveMentorMessage, type MentorType } from '@/app/actions/chat'
+import { recordSkillResult } from '@/app/actions/skill'
 import { MENTOR_TEMPERATURE } from '@/lib/mentor-base'
 
 type Message = {
@@ -85,6 +86,7 @@ export default function MentorPanel({
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const [selectedModel, setSelectedModel] = useState<'gemini'>('gemini')
   const [openDropdown, setOpenDropdown] = useState<'mentor' | 'model' | null>(null)
+  const [gaveBottomOutThisCycle, setGaveBottomOutThisCycle] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // initialOpen=true なら1回だけ展開し、URLから ?mentorOpen=true を除去する
@@ -123,6 +125,7 @@ export default function MentorPanel({
   }, [messages])
 
   useEffect(() => {
+    setGaveBottomOutThisCycle(false)
     const loadHistory = async () => {
       try {
         const history = await getMentorHistory(projectId, questId, mode as MentorType)
@@ -189,15 +192,33 @@ export default function MentorPanel({
       MENTOR_TEMPERATURE.custom
     const { reply, error } = await sendMentorMessage(text, history, prompt, temperature)
 
-    const assistantContent = error || !reply
+    let cleanReply = reply
+    if (mode === 'quest' && cleanReply) {
+      let gaveBottomOut = gaveBottomOutThisCycle
+      if (cleanReply.includes('%%%GAVE_ANSWER%%%')) {
+        gaveBottomOut = true
+        setGaveBottomOutThisCycle(true)
+        cleanReply = cleanReply.replace(/%%%GAVE_ANSWER%%%/g, '').trim()
+      }
+      if (cleanReply.includes('%%%SOLVED%%%')) {
+        const x: 0 | 1 = gaveBottomOut ? 0 : 1
+        recordSkillResult(x, gaveBottomOut, projectId, questId)
+          .then((r) => { if (r.error) console.error('[skill] 記録失敗:', r.error) })
+          .catch((e) => console.error('[skill] 記録失敗:', e))
+        setGaveBottomOutThisCycle(false)
+        cleanReply = cleanReply.replace(/%%%SOLVED%%%/g, '').trim()
+      }
+    }
+
+    const assistantContent = error || !cleanReply
       ? 'メンターに接続できませんでした。もう一度試してみてください。'
-      : reply
+      : cleanReply
 
     setMessages((prev) => [...prev, { role: 'assistant', content: assistantContent }])
 
-    if (!error && reply) {
+    if (!error && cleanReply) {
       const assistantSaveRes = await saveMentorMessage(
-        projectId, questId, 'assistant', reply,
+        projectId, questId, 'assistant', cleanReply,
         effectiveMentorType,
         mode === 'custom' ? customMentorId : undefined
       )
