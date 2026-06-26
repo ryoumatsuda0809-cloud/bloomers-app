@@ -31,15 +31,10 @@ export async function searchKnowledge(query: string): Promise<KnowledgeChunk[]> 
     )
 
     const embedText = await embedResponse.text()
-    console.log('[Knowledge] Embedding APIステータス:', embedResponse.status)
-    if (!embedResponse.ok) {
-      console.error('Gemini Embedding APIエラー:', embedResponse.status, embedText)
-      return []
-    }
+    if (!embedResponse.ok) return []
 
     const embedData = JSON.parse(embedText)
     const embedding = embedData.embedding?.values as number[] | undefined
-    console.log('[Knowledge] embedding取得:', embedding ? `${embedding.length}次元` : 'null')
     if (!embedding) return []
 
     // 2. Supabase に直接SQLで問い合わせ
@@ -49,20 +44,12 @@ export async function searchKnowledge(query: string): Promise<KnowledgeChunk[]> 
     const { data, error } = await supabase.rpc('match_knowledge_chunks', {
       query_embedding: vectorString,
       match_count: 3,
-      match_threshold: 0.0,
+      match_threshold: 0.6,
     })
 
-    console.log('[Knowledge] RPCエラー:', error)
-    console.log('[Knowledge] RPCデータ件数:', Array.isArray(data) ? data.length : data)
+    if (error) return []
 
-    if (error) {
-      console.error('match_knowledge_chunks RPCエラー:', error)
-      return []
-    }
-
-    const results = (data ?? []) as KnowledgeChunk[]
-    console.log('[Knowledge] 検索結果:', results.length, '件', results.map((r: KnowledgeChunk) => r.trigger))
-    return results
+    return (data ?? []) as KnowledgeChunk[]
 
   } catch (err) {
     console.error('searchKnowledgeエラー:', err)
