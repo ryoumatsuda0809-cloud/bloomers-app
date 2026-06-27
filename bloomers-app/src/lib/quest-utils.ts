@@ -16,12 +16,12 @@ export const QUEST_CONFIG = {
   q1: {
     columnName: 'setup_steps',
     questNumber: null,
-    title: '開発環境を整えよう',
-    estimatedMinutes: 15,
+    title: 'アイデアをつくろう！',
+    estimatedMinutes: 10,
     difficulty: 1,
-    mentorMessage: "家を建てる前に、まず土地を確保する。\nGitHubがその土地になる。\n一度整えれば、あとはずっと使い回せる。",
+    mentorMessage: "まだアイデアが固まっていなくて大丈夫。\n「誰のために」「何を」「どうやって」を\n一緒に見つけていこう。",
     decisionQuestion: null,
-    hiddenPrompt: "GitHubとVercelのアカウントを作成し、Next.jsプロジェクトをホストするためのリポジトリを作成する手順をステップバイステップで教えてください",
+    hiddenPrompt: "アイデア検証インタビュー（ペルソナ・既存代替・切実さ・核）への回答を元に、実現可能なアプリの土台を固める",
   },
   q2: {
     columnName: 'quest2_steps',

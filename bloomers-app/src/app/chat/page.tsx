@@ -37,6 +37,7 @@ function ChatContent() {
   const [top5Ideas, setTop5Ideas] = useState<string[]>([])
   const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null)
   const [showIdeaChoiceDialog, setShowIdeaChoiceDialog] = useState(false)
+  const [showClearDialog, setShowClearDialog] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
 
@@ -207,8 +208,11 @@ function ChatContent() {
     setIsLoading(false)
   }
 
-  const handleClear = async () => {
-    if (!confirm('会話履歴をリセットしますか？')) return
+  const handleClear = () => {
+    setShowClearDialog(true)
+  }
+
+  const handleClearConfirm = async () => {
     await clearChatHistory()
     setMessages([{
       id: 'welcome-new',
@@ -333,7 +337,7 @@ function ChatContent() {
               <p className="text-sm font-medium text-foreground">どれが一番刺さりますか？</p>
               {top5Ideas.map((idea, i) => (
                 <button
-                  key={i}
+                  key={idea}
                   onClick={() => {
                     setSelectedIdeaIndex(i)
                     setShowIdeaChoiceDialog(true)
@@ -437,6 +441,26 @@ function ChatContent() {
 
     </div>
 
+    <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>会話をリセットしますか？</AlertDialogTitle>
+          <AlertDialogDescription>
+            これまでの会話履歴が削除されます。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2">
+          <AlertDialogAction
+            onClick={handleClearConfirm}
+            className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+          >
+            リセットする
+          </AlertDialogAction>
+          <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <AlertDialog open={showIdeaChoiceDialog} onOpenChange={setShowIdeaChoiceDialog}>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -447,7 +471,7 @@ function ChatContent() {
               : 'アイデアが選ばれました。'}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-3 sm:flex-col">
+        <AlertDialogFooter className="flex-col gap-3">
           <AlertDialogAction
             onClick={() => {
               setShowIdeaChoiceDialog(false)

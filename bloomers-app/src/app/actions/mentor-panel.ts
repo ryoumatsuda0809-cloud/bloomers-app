@@ -12,6 +12,7 @@ export type MentorContext = {
   how: string
   questTitle: string
   stepTitle: string
+  skillLevel?: number
 }
 
 export async function getMentorContext(
@@ -28,7 +29,7 @@ export async function getMentorContext(
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('onboarding_answers, selected_idea')
+    .select('onboarding_answers, selected_idea, skill_level')
     .eq('id', user.id)
     .single()
 
@@ -40,13 +41,17 @@ export async function getMentorContext(
 
   const ideaCard = project?.idea_card ?? profile?.selected_idea
   const answers = profile?.onboarding_answers as Record<string, string> | null
+  const profileData = profile as Record<string, unknown> | null
+
+  const validatedBrief = ideaCard?.validatedBrief
 
   return {
-    who: ideaCard?.questDescriptions?.[0] ?? answers?.background ?? '（未設定）',
-    what: answers?.problem ?? ideaCard?.description ?? '（未設定）',
-    how: answers?.ideal ?? ideaCard?.title ?? '（未設定）',
+    who: validatedBrief?.who ?? ideaCard?.questDescriptions?.[0] ?? answers?.background ?? '（未設定）',
+    what: validatedBrief?.what ?? answers?.problem ?? ideaCard?.description ?? '（未設定）',
+    how: validatedBrief?.how ?? answers?.ideal ?? ideaCard?.title ?? '（未設定）',
     questTitle,
     stepTitle,
+    skillLevel: typeof profileData?.skill_level === 'number' ? profileData.skill_level : 0.5,
   }
 }
 
@@ -54,6 +59,22 @@ export async function generateMentorSystemPrompt(
   questTitle: string,
   context: MentorContext
 ): Promise<{ prompt?: string; error?: string }> {
+  const skillLevel = context.skillLevel ?? 0.5
+
+  const hintDepthBlock = skillLevel <= 0.4
+    ? `\n\n【ヒントの手厚さ：Fade-in（丁寧モード）】
+このユーザーはまだ習熟度が低いため、ヒントをより丁寧に出してください。
+- 方向づけの段階で、具体的な手がかりを1つ多く添える
+- 「どこから確認すればいいか」を最初から示す
+- メタ認知の問いはやさしい表現で（「どこを直したと思う？」など）`
+    : skillLevel >= 0.7
+    ? `\n\n【ヒントの手厚さ：Fade-out（自立モード）】
+このユーザーは習熟度が高いため、ヒントを最小限にしてください。
+- 方向づけだけ示し、特定・解の型は自分で辿り着かせる
+- 「どう思う？」「まず何を試す？」のように引き出すことを優先
+- 自力解決できたら積極的に %%%SOLVED%%% を付与`
+    : ''
+
   const questRole = `\n\n【役割：クエスト常駐メンター】
 あなたはユーザーが今取り組んでいるクエストの伴走者です。詰まりを解決し、前に進める手助けをします。
 
@@ -72,9 +93,9 @@ export async function generateMentorSystemPrompt(
 - まず1つの質問で切り分ける:「概念（なぜそうするのか）が分からない? それとも書き方（どう書くか）が分からない?」→ 足りない側にだけ焦点を当てる
 - ヒントは段階的に: ①何を確認すべきか（方向づけ）→ ②どこが問題か（特定）→ ③考え方の例（解の型）の順で、必要な段階まで
 - 完成コードそのもの（答え丸ごと）は絶対に出さない
-- ヒントを出す時は「なぜそう直すと思う?」のようなメタ認知を促す問いを1つ添える
-
-【内部マーカー（ユーザーには見せない・返答の最後に付与）】
+- ヒントを出す時は「なぜそう直すと思う?」のようなメタ認知を促す問いを1つ添える` +
+    hintDepthBlock +
+    `\n\n【内部マーカー（ユーザーには見せない・返答の最後に付与）】
 - 完成コードや答えそのものを提示した場合は %%%GAVE_ANSWER%%% を出力する
 - ユーザーが自分の力で問題を解決できたことが分かった場合は %%%SOLVED%%% を出力する`
 

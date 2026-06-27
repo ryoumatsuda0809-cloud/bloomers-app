@@ -10,11 +10,37 @@ export type PersonalityData = {
   localPain: string
 }
 
+export type ValidatedBrief = {
+  persona: string
+  alternatives: string
+  urgency: string
+  essentialCore: string
+  who: string
+  what: string
+  how: string
+}
+
+export type ValidationPhase = 'persona' | 'market' | 'urgency' | 'core' | 'summary' | 'revise' | 'done'
+
+export type ValidationAnswers = {
+  persona?: string
+  market?: string
+  urgency?: string
+  core?: string
+}
+
+export type ValidationProgress = {
+  phase: ValidationPhase
+  answers: ValidationAnswers
+}
+
 export type IdeaCard = {
   title: string
   description: string
   questTitles: string[]
   questDescriptions: string[]
+  validatedBrief?: ValidatedBrief
+  validationProgress?: ValidationProgress
 }
 
 export async function generateIdeasWithAI(
@@ -175,6 +201,12 @@ export async function saveOnboardingData(
 
   if (error) return { error: 'データの保存に失敗しました。' }
 
+  // 既存プロジェクトをすべて非アクティブ化（タイトル依存を排除）
+  await supabase
+    .from('project_ideas')
+    .update({ is_active: false })
+    .eq('user_id', user.id)
+
   // project_ideasにも保存
   await supabase
     .from('project_ideas')
@@ -186,13 +218,6 @@ export async function saveOnboardingData(
       idea_card: selectedIdea,
       is_active: true,
     })
-
-  // 他のプロジェクトをis_active: falseに
-  await supabase
-    .from('project_ideas')
-    .update({ is_active: false })
-    .eq('user_id', user.id)
-    .neq('title', selectedIdea.title)
 
   // 生成したプロジェクトのIDを取得
   const { data: newProject } = await supabase

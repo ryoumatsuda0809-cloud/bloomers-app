@@ -172,7 +172,7 @@ export default function QuestCard({
               </>
             )}
             <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md h-9 text-sm font-semibold"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md h-10 text-sm font-semibold"
               disabled={isSubmitting}
               onClick={() => withSubmit(() => onComplete(id))}
             >

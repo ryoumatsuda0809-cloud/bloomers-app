@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { signUp, signIn } from '@/app/actions/auth'
+import { Mail, Lock, CheckCircle2 } from 'lucide-react'
 
 const authSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
@@ -17,6 +17,12 @@ const authSchema = z.object({
 })
 
 type AuthFormValues = z.infer<typeof authSchema>
+
+const features = [
+  'AIが全力で伴走。コードは書かなくていい',
+  '「詰まり」を即解決するメンター機能',
+  'あなたのアイデアが本物のプロダクトに',
+]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -27,127 +33,159 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
   })
 
   const onSubmit = async (values: AuthFormValues) => {
     setServerError(null)
-
     const action = mode === 'signup' ? signUp : signIn
     const { error } = await action(values.email, values.password)
-
     if (error) {
       setServerError(error)
       return
     }
-
     router.push('/')
   }
 
+  const switchMode = (next: 'login' | 'signup') => {
+    setMode(next)
+    setServerError(null)
+    reset()
+  }
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-muted/40 flex items-center justify-center p-4">
 
-        {/* ロゴ */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <span className="text-3xl">🌸</span>
-          <span className="text-2xl font-bold tracking-tight text-foreground">Bloomers</span>
-        </div>
+      {/* ── カード全体（丸角コンテナ） ─────────────────────── */}
+      <div className="w-full max-w-4xl flex rounded-3xl overflow-hidden shadow-2xl shadow-black/10">
 
-        <Card className="rounded-2xl shadow-md ring-1 ring-border">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-foreground">
-              {mode === 'login' ? 'ログイン' : 'アカウント登録'}
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              {mode === 'login'
-                ? 'メールアドレスとパスワードでログイン'
-                : 'メールアドレスとパスワードで新規登録'}
-            </CardDescription>
-          </CardHeader>
+        {/* ── 左パネル（PC のみ） ──────────────────────────── */}
+        <div
+          className="hidden lg:flex lg:w-[45%] flex-col justify-between p-10"
+          style={{
+            background: 'linear-gradient(145deg, oklch(0.420 0.210 355), oklch(0.700 0.130 340))',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🌸</span>
+            <span className="text-lg font-bold tracking-tight text-white">Bloomers</span>
+          </div>
 
-          <CardContent className="space-y-5">
-
-            {/* Googleログイン（ダミー） */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-9 text-sm font-medium gap-2"
-              disabled
-            >
-              <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-              Googleでログイン（準備中）
-            </Button>
-
-            {/* 区切り線 */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="bg-card px-3 text-xs text-muted-foreground">または</span>
-              </div>
+          <div className="space-y-8">
+            <div>
+              <h1 className="font-heading text-4xl font-bold text-white leading-snug">
+                作りたいを、<br />形に。
+              </h1>
+              <p className="mt-3 text-white/65 text-sm leading-relaxed">
+                初心者でも、アイデアがあれば大丈夫。<br />
+                AIと一緒にプロダクトを作り上げよう。
+              </p>
             </div>
 
-            {/* メール/パスワードフォーム */}
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+            <ul className="space-y-3.5">
+              {features.map((f) => (
+                <li key={f} className="flex items-start gap-3">
+                  <CheckCircle2 className="size-4 text-white/80 mt-0.5 shrink-0" />
+                  <span className="text-white/75 text-sm leading-snug">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
+          <p className="text-white/25 text-xs">© 2025 Bloomers</p>
+        </div>
+
+        {/* ── 右パネル（フォーム） ─────────────────────────── */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 py-10 bg-card">
+
+          {/* モバイル用ロゴ */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <span className="text-2xl">🌸</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Bloomers</span>
+          </div>
+
+          <div className="w-full max-w-sm">
+
+            {/* ヘッダー */}
+            <div className="mb-7">
+              <h2 className="text-xl font-bold text-foreground">
+                {mode === 'login' ? 'おかえりなさい' : 'はじめよう'}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {mode === 'login' ? 'アカウントにログイン' : '無料でアカウントを作成'}
+              </p>
+            </div>
+
+            {/* タブ切り替え（ピル型トグル） */}
+            <div className="flex bg-muted rounded-2xl p-1 mb-7">
+              {(['login', 'signup'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={[
+                    'flex-1 py-2 text-sm font-medium rounded-xl transition-all duration-200',
+                    mode === m
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  ].join(' ')}
+                >
+                  {m === 'login' ? 'ログイン' : '新規登録'}
+                </button>
+              ))}
+            </div>
+
+            {/* フォーム */}
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+
+              {/* メール */}
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-medium text-foreground">
+                <Label htmlFor="email" className="text-xs font-medium">
                   メールアドレス
                 </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  aria-invalid={!!errors.email}
-                  className="h-9 text-sm"
-                  {...register('email')}
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    aria-invalid={!!errors.email}
+                    className="h-11 pl-10 text-sm rounded-xl"
+                    {...register('email')}
+                  />
+                </div>
                 {errors.email && (
                   <p className="text-xs text-destructive">{errors.email.message}</p>
                 )}
               </div>
 
+              {/* パスワード */}
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-medium text-foreground">
+                <Label htmlFor="password" className="text-xs font-medium">
                   パスワード
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="6文字以上"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  aria-invalid={!!errors.password}
-                  className="h-9 text-sm"
-                  {...register('password')}
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="6文字以上"
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    aria-invalid={!!errors.password}
+                    className="h-11 pl-10 text-sm rounded-xl"
+                    {...register('password')}
+                  />
+                </div>
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password.message}</p>
                 )}
               </div>
 
               {serverError && (
-                <p className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-2">
+                <p className="text-xs text-destructive bg-destructive/10 rounded-xl px-3 py-2.5">
                   {serverError}
                 </p>
               )}
@@ -155,33 +193,23 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-9 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold"
+                className="w-full h-11 font-semibold rounded-xl mt-1"
               >
                 {isSubmitting
                   ? '処理中...'
                   : mode === 'login'
                   ? 'ログイン'
-                  : '登録する'}
+                  : 'アカウントを作成'}
               </Button>
             </form>
 
-            {/* モード切り替え */}
-            <p className="text-center text-xs text-muted-foreground">
-              {mode === 'login' ? 'アカウントをお持ちでない方は' : 'すでにアカウントをお持ちの方は'}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'login' ? 'signup' : 'login')
-                  setServerError(null)
-                }}
-                className="ml-1 text-primary hover:underline font-medium"
-              >
-                {mode === 'login' ? '新規登録' : 'ログイン'}
-              </button>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              登録することで
+              <span className="text-foreground/60">利用規約</span>
+              に同意したことになります
             </p>
-
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
       </div>
     </div>

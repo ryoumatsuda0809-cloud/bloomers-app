@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, LogOut, Sun, Moon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppShell from '@/components/layout/AppShell'
@@ -32,9 +32,16 @@ export default function ProfilePage() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [toneOverride, setToneOverride] = useState<'gentle' | 'balanced' | 'strict' | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setIsDarkMode(document.documentElement.classList.contains('dark'))
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
   }, [])
 
   const handleToggleTheme = (dark: boolean) => {
@@ -78,7 +85,8 @@ export default function ProfilePage() {
 
     setSaved(true)
     setIsSaving(false)
-    setTimeout(() => setSaved(false), 2000)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
   }
 
   const handleSignOut = async () => {
@@ -293,7 +301,7 @@ export default function ProfilePage() {
               またいつでも戻ってこられます。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <AlertDialogFooter className="flex-col gap-2">
             <AlertDialogAction
               onClick={handleSignOut}
               className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"

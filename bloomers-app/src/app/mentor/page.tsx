@@ -443,7 +443,7 @@ export default function MentorPage() {
         {editingId !== conv.id && (
           <button
             onClick={(e) => openMenu(e, conv.id)}
-            className="absolute top-2 right-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
+            className="absolute top-2 right-1.5 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10 transition"
             aria-label="メニュー"
           >
             <MoreHorizontal className="size-4" />
@@ -855,7 +855,7 @@ export default function MentorPage() {
               相談したい内容に合わせて選んでください。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <AlertDialogFooter className="flex-col gap-2">
             {(['idea', 'general'] as MentorMode[]).map((mode) => {
               const Icon = MODE_LABELS[mode].icon
               return (
@@ -910,7 +910,7 @@ export default function MentorPage() {
               「{deleteTarget?.title}」と、その会話履歴がすべて削除されます。この操作は取り消せません。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <AlertDialogFooter className="flex-col gap-2">
             <AlertDialogAction
               onClick={handleDelete}
               className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"

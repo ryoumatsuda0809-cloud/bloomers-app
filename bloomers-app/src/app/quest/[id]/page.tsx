@@ -43,6 +43,13 @@ function QuestContent() {
   const id = typeof params.id === 'string' ? params.id : ''
   const isReviewMode = searchParams.get('review') === '1'
 
+  // q1 は専用の検証インタビューページへ
+  useEffect(() => {
+    if (id === 'q1') {
+      router.replace(`/quest/q1-validation${isReviewMode ? '?review=1' : ''}`)
+    }
+  }, [id, isReviewMode, router])
+
   const [steps, setSteps] = useState<SetupStep[]>([])
   const [projectId, setProjectId] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
@@ -77,7 +84,9 @@ function QuestContent() {
         .select(`id, is_trial, ${config.columnName}`)
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (data) {
         setProjectId(data.id)

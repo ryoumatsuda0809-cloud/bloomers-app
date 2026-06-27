@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { mergeQuestsWithProgress } from '@/lib/quest-utils'
-import { getOnboardingStatus, getSelectedIdea } from '@/app/actions/onboarding'
+import { getOnboardingStatus } from '@/app/actions/onboarding'
+import type { IdeaCard } from '@/app/actions/onboarding'
 import QuestStoreInitializer from '@/components/dashboard/QuestStoreInitializer'
 import QuestDashboard from '@/components/dashboard/QuestDashboard'
 
@@ -26,10 +27,12 @@ export default async function Home({ searchParams }: Props) {
 
   const { data: activeProject } = await supabase
     .from('project_ideas')
-    .select('id, is_trial, last_mentor_type, last_custom_mentor_id')
+    .select('id, is_trial, last_mentor_type, last_custom_mentor_id, idea_card')
     .eq('user_id', user.id)
     .eq('is_active', true)
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const activeProjectId = activeProject?.id ?? ''
   const ap = activeProject as {
@@ -37,6 +40,7 @@ export default async function Home({ searchParams }: Props) {
     is_trial?: boolean
     last_mentor_type?: string
     last_custom_mentor_id?: string
+    idea_card?: IdeaCard
   } | null
   const isTrial = ap?.is_trial ?? false
   const initialMentorMode = (ap?.last_mentor_type as 'idea' | 'general' | 'custom') ?? 'idea'
@@ -51,8 +55,8 @@ export default async function Home({ searchParams }: Props) {
   const progressMap: Record<string, 'not_started' | 'in_progress' | 'completed'> =
     rows ? Object.fromEntries(rows.map((r) => [r.quest_id, r.status])) : {}
 
-  const selectedIdea = await getSelectedIdea()
-  const initialQuests = mergeQuestsWithProgress(progressMap, selectedIdea ?? undefined)
+  const activeIdeaCard = ap?.idea_card ?? null
+  const initialQuests = mergeQuestsWithProgress(progressMap, activeIdeaCard ?? undefined)
 
   return (
     <main className="min-h-screen bg-background">

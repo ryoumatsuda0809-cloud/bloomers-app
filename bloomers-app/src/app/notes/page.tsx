@@ -51,7 +51,7 @@ function ScopeSelector({
   customMentors: CustomMentor[]
 }) {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       {/* このプロジェクトだけ */}
       <label className="block border border-border rounded-xl p-3 cursor-pointer hover:border-primary transition-colors">
         <div className="flex items-center gap-2">

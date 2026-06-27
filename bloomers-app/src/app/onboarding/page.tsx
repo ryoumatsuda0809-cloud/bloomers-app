@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, GraduationCap, Music, Briefcase, Lightbulb, HelpCircle, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { generateIdeasWithAI, saveOnboardingData } from '@/app/actions/onboarding'
@@ -12,13 +12,13 @@ export default function OnboardingPage() {
   const [showGenreSelect, setShowGenreSelect] = useState(false)
   const [selectedGenre, setSelectedGenre] = useState<string>('')
 
-  const GENRES = [
-    { id: 'local', label: '地域・地元の課題', emoji: '🏘️' },
-    { id: 'school', label: '学校・大学生活', emoji: '🎓' },
-    { id: 'hobby', label: '趣味・好きなこと', emoji: '🎸' },
-    { id: 'work', label: 'バイト・仕事の効率化', emoji: '💼' },
-    { id: 'daily', label: '日常の不便・もったいない', emoji: '💡' },
-    { id: 'other', label: 'まだ分からない', emoji: '🌱' },
+  const GENRES: { id: string; label: string; icon: LucideIcon }[] = [
+    { id: 'local', label: '地域・地元の課題', icon: MapPin },
+    { id: 'school', label: '学校・大学生活', icon: GraduationCap },
+    { id: 'hobby', label: '趣味・好きなこと', icon: Music },
+    { id: 'work', label: 'バイト・仕事の効率化', icon: Briefcase },
+    { id: 'daily', label: '日常の不便・もったいない', icon: Lightbulb },
+    { id: 'other', label: 'まだ分からない', icon: HelpCircle },
   ]
 
   return (
@@ -42,20 +42,23 @@ export default function OnboardingPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {GENRES.map((genre) => (
-                <button
-                  key={genre.id}
-                  onClick={() => setSelectedGenre(genre.id)}
-                  className={`h-auto py-3 px-4 rounded-xl border text-left transition ${
-                    selectedGenre === genre.id
-                      ? 'bg-primary border-primary text-primary-foreground'
-                      : 'bg-card border-border text-foreground hover:border-primary hover:bg-muted'
-                  }`}
-                >
-                  <span className="text-lg block mb-0.5">{genre.emoji}</span>
-                  <span className="text-xs font-medium leading-snug">{genre.label}</span>
-                </button>
-              ))}
+              {GENRES.map((genre) => {
+                const Icon = genre.icon
+                return (
+                  <button
+                    key={genre.id}
+                    onClick={() => setSelectedGenre(genre.id)}
+                    className={`h-auto py-3 px-4 rounded-xl border text-left transition ${
+                      selectedGenre === genre.id
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-card border-border text-foreground hover:border-primary hover:bg-muted'
+                    }`}
+                  >
+                    <Icon className="size-5 mb-1 opacity-80" />
+                    <span className="text-xs font-medium leading-snug">{genre.label}</span>
+                  </button>
+                )
+              })}
             </div>
 
             <div className="space-y-2">

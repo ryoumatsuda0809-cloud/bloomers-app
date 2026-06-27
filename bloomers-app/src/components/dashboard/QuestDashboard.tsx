@@ -193,7 +193,7 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial, i
                   onGitHubSave={handleGitHubSave}
                   gitHubSaveStatus={gitHubSaveStatus}
                   gitHubRepoUrl={gitHubRepoUrl}
-                  href={(quest.status === 'active' || quest.status === 'in_progress') ? `/quest/${quest.id}` : undefined}
+                  href={['active', 'in_progress', 'completed', 'skipped'].includes(quest.status) ? `/quest/${quest.id}` : undefined}
                 />
                 {index < quests.length - 1 && <QuestConnector fromStatus={quest.status} />}
               </div>

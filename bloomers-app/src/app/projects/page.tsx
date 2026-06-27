@@ -23,6 +23,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectIdea[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewIdeaDialog, setShowNewIdeaDialog] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -37,10 +38,12 @@ export default function ProjectsPage() {
     })
   }, [])
 
-  const handleDelete = async (projectId: string) => {
-    if (!confirm('このプロジェクト案を削除しますか？')) return
-    await deleteProjectIdea(projectId)
-    setProjects(projects.filter((p) => p.id !== projectId))
+  const handleDelete = async () => {
+    if (!deleteTargetId) return
+    const id = deleteTargetId
+    setDeleteTargetId(null)
+    await deleteProjectIdea(id)
+    setProjects((prev) => prev.filter((p) => p.id !== id))
   }
 
   const handleOpenProject = async (id: string) => {
@@ -212,7 +215,7 @@ export default function ProjectsPage() {
                             <PinOff className="size-3.5" /> ピンを外す
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(p.id) }}
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); setDeleteTargetId(p.id) }}
                             className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-muted text-left"
                           >
                             <Trash2 className="size-3.5" /> 削除
@@ -289,7 +292,7 @@ export default function ProjectsPage() {
                             <Pin className="size-3.5" /> ピン留め
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(p.id) }}
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); setDeleteTargetId(p.id) }}
                             className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-muted text-left"
                           >
                             <Trash2 className="size-3.5" /> 削除
@@ -305,6 +308,26 @@ export default function ProjectsPage() {
         )}
 
       </div>
+
+      <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>このプロジェクト案を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{projects.find((p) => p.id === deleteTargetId)?.title}」を削除します。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="w-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              削除する
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full">キャンセル</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showNewIdeaDialog} onOpenChange={setShowNewIdeaDialog}>
         <AlertDialogContent>
