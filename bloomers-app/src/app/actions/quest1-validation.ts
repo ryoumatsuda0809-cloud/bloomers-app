@@ -325,7 +325,7 @@ export async function loadValidationState(
 
   const { data: project, error } = await supabase
     .from('project_ideas')
-    .select('idea_card, is_trial')
+    .select('idea_card')
     .eq('id', projectId)
     .single()
 

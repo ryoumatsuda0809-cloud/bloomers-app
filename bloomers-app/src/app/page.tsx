@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: Props) {
 
   const { data: activeProject } = await supabase
     .from('project_ideas')
-    .select('id, is_trial, last_mentor_type, last_custom_mentor_id, idea_card')
+    .select('id, last_mentor_type, last_custom_mentor_id, idea_card')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -37,12 +37,10 @@ export default async function Home({ searchParams }: Props) {
   const activeProjectId = activeProject?.id ?? ''
   const ap = activeProject as {
     id?: string
-    is_trial?: boolean
     last_mentor_type?: string
     last_custom_mentor_id?: string
     idea_card?: IdeaCard
   } | null
-  const isTrial = ap?.is_trial ?? false
   const initialMentorMode = (ap?.last_mentor_type as 'idea' | 'general' | 'custom') ?? 'idea'
   const initialCustomMentorId = ap?.last_custom_mentor_id ?? undefined
 
@@ -64,7 +62,6 @@ export default async function Home({ searchParams }: Props) {
       <QuestDashboard
         activeProjectId={activeProjectId}
         mentorOpen={mentorOpen}
-        isTrial={isTrial}
         initialMentorMode={initialMentorMode}
         initialCustomMentorId={initialCustomMentorId}
       />

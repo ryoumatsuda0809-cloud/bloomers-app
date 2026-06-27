@@ -124,10 +124,10 @@ export default function OnboardingPage() {
               className="w-full h-auto py-4 bg-background hover:bg-muted border border-dashed border-border hover:border-primary rounded-2xl transition group text-left px-5"
             >
               <p className="text-muted-foreground font-medium text-sm group-hover:text-primary transition-colors">
-                まずお試しで体験する
+                サンプルで始める
               </p>
               <p className="text-muted-foreground text-xs mt-0.5 opacity-70">
-                アイデアがなくても、サンプルで操作を体験できます
+                アイデアがなくても、サンプルから本格的に始められます
               </p>
             </button>
           </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { updateStepCompletion, updateQuestStepCompletion } from '@/app/actions/setup'
+import { updateStepCompletion, updateQuestStepCompletion, ensureQuestSteps } from '@/app/actions/setup'
 import type { SetupStep } from '@/app/actions/setup'
 import { updateQuestStatus } from '@/app/actions/quest'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -64,7 +64,6 @@ function QuestContent() {
   const [noteSaveStatus, setNoteSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [mentorOpen, setMentorOpen] = useState(true)
   const [mentorHistory, setMentorHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
-  const [isTrial, setIsTrial] = useState(false)
   const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const wasCompleteOnLoad = useRef(false)
@@ -81,7 +80,7 @@ function QuestContent() {
 
       const { data } = await supabase
         .from('project_ideas')
-        .select(`id, is_trial, ${config.columnName}`)
+        .select(`id, ${config.columnName}`)
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -90,9 +89,14 @@ function QuestContent() {
 
       if (data) {
         setProjectId(data.id)
-        setIsTrial((data as Record<string, unknown>).is_trial === true)
         const stepsData = (data as Record<string, unknown>)[config.columnName]
-        const loadedSteps = (stepsData ?? []) as SetupStep[]
+        let loadedSteps = (stepsData ?? []) as SetupStep[]
+
+        // q2〜q5 でステップが空なら遅延生成（既存プロジェクト救済 + 新規の保険）
+        if (loadedSteps.length === 0 && config.questNumber !== null) {
+          loadedSteps = await ensureQuestSteps(data.id, config.questNumber as 2 | 3 | 4 | 5)
+        }
+
         setSteps(loadedSteps)
         const firstIncomplete = loadedSteps.findIndex((s) => !s.completed)
         setCurrentStep(firstIncomplete === -1 ? 0 : firstIncomplete)
@@ -424,7 +428,6 @@ function QuestContent() {
             projectId={projectId}
             desktopOpen={mentorOpen}
             onDesktopClose={() => setMentorOpen(false)}
-            isTrial={isTrial}
           />
         )}
 

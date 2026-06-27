@@ -18,7 +18,7 @@ export default function TrialPage() {
 
     setIsLoading(true)
     setError(null)
-    const result = await saveTrialProject(sample.ideaCard, sample.setupSteps)
+    const result = await saveTrialProject(sample.ideaCard)
     if (result.error) {
       setError(result.error)
       setIsLoading(false)
@@ -41,7 +41,7 @@ export default function TrialPage() {
           </button>
           <div className="flex items-center gap-2">
             <span className="text-2xl">🌸</span>
-            <span className="text-lg font-bold text-foreground">お試し体験</span>
+            <span className="text-lg font-bold text-foreground">サンプルで始める</span>
           </div>
         </div>
 
@@ -50,7 +50,7 @@ export default function TrialPage() {
             サンプルを1つ選んでください
           </h1>
           <p className="text-muted-foreground text-sm">
-            選んだアイデアで、クエストの流れを体験できます。後から自分のアイデアに切り替えられます。
+            選んだアイデアで、本格的な開発をすぐに始められます。後から自分のアイデアを追加することもできます。
           </p>
         </div>
 
@@ -89,7 +89,7 @@ export default function TrialPage() {
           disabled={!selectedId || isLoading}
           className="w-full h-12 bg-primary text-primary-foreground text-sm font-semibold rounded-2xl hover:bg-primary/90 transition disabled:opacity-50"
         >
-          {isLoading ? '準備中...' : 'このアイデアで体験する'}
+          {isLoading ? '準備中...' : 'このアイデアで始める'}
         </button>
 
       </div>

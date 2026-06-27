@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { updateQuestStatus } from '@/app/actions/quest'
 import { createRepository } from '@/app/actions/github'
-import { PartyPopper, Sprout } from 'lucide-react'
+import { PartyPopper } from 'lucide-react'
 import MentorPanel from '@/components/quest/MentorPanel'
 import AppShell from '@/components/layout/AppShell'
 import { getCustomMentors, type CustomMentor } from '@/app/actions/custom-mentors'
@@ -18,12 +18,11 @@ import { saveLastMentor } from '@/app/actions/projects'
 type QuestDashboardProps = {
   activeProjectId: string
   mentorOpen?: boolean
-  isTrial?: boolean
   initialMentorMode?: 'idea' | 'general' | 'custom'
   initialCustomMentorId?: string
 }
 
-export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial, initialMentorMode, initialCustomMentorId }: QuestDashboardProps) {
+export default function QuestDashboard({ activeProjectId, mentorOpen, initialMentorMode, initialCustomMentorId }: QuestDashboardProps) {
   const router = useRouter()
   const quests = useQuestStore((state) => state.quests)
   const startQuest = useQuestStore((state) => state.startQuest)
@@ -137,7 +136,6 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial, i
             customMentors={customMentors}
             onMentorChange={handleMentorChange}
             initialOpen={mentorOpen}
-            isTrial={isTrial}
           />
         ) : undefined
       }
@@ -147,22 +145,6 @@ export default function QuestDashboard({ activeProjectId, mentorOpen, isTrial, i
             <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground mb-1">クエストダッシュボード</h1>
             <p className="text-muted-foreground text-sm">ステップをひとつずつクリアして、あなたのプロダクトを育てよう。</p>
           </div>
-
-          {isTrial && (
-            <div className="mb-8 rounded-2xl border border-primary/40 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex items-center gap-2 shrink-0">
-                <Sprout className="size-4 text-primary" />
-                <span className="text-xs font-semibold text-primary bg-primary/15 px-2 py-0.5 rounded-full">試作中（体験版）</span>
-              </div>
-              <p className="text-sm text-muted-foreground flex-1">サンプルアイデアで操作を体験中です。自分のアイデアに切り替えると、本格的な開発がスタートします。</p>
-              <button
-                onClick={() => router.push('/onboarding')}
-                className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition px-4 py-2 rounded-xl"
-              >
-                自分のアイデアで始める
-              </button>
-            </div>
-          )}
 
           <div className="lg:hidden bg-card rounded-xl p-4 shadow-sm ring-1 ring-border mb-8 flex items-center gap-4">
             <div className="flex-1">

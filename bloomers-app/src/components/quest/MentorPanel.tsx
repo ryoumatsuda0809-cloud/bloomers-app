@@ -36,19 +36,6 @@ interface MentorPanelProps {
   initialOpen?: boolean
   desktopOpen?: boolean
   onDesktopClose?: () => void
-  isTrial?: boolean
-}
-
-function getTrialGuide(questTitle: string): string {
-  return `お試しモードへようこそ！
-
-ここでは実際にアプリを作る流れを体験できるよ。
-
-・左のクエストを上から順番に進めてみてね
-・いまは「${questTitle}」のステップが並んでるよ
-・分からないことは何でも僕に聞いてね！
-
-気に入ったら「自分のアイデアで始める」から、君だけのアプリ作りをスタートできるよ 🌸`
 }
 
 const FALLBACK_SYSTEM_PROMPT = `あなたはBloomerのメンターです。
@@ -72,7 +59,6 @@ export default function MentorPanel({
   initialOpen = false,
   desktopOpen,
   onDesktopClose,
-  isTrial = false,
 }: MentorPanelProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -133,8 +119,6 @@ export default function MentorPanel({
           setMessages(
             history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content }))
           )
-        } else if (isTrial) {
-          setMessages([{ role: 'assistant', content: getTrialGuide(questTitle), isGreeting: true }])
         } else {
           setMessages([])
         }

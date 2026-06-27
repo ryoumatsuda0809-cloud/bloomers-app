@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { generateSetupSteps, generateQuestSteps } from '@/app/actions/setup'
-import type { SetupStep } from '@/app/actions/setup'
 
 export type PersonalityData = {
   timeUsage: string
@@ -432,19 +431,18 @@ export async function updateToneOverride(
 }
 
 export async function saveTrialProject(
-  ideaCard: IdeaCard,
-  setupSteps: SetupStep[]
+  ideaCard: IdeaCard
 ): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '認証エラーが発生しました。' }
 
   try {
+    // 既存プロジェクトをすべて非アクティブ化
     await supabase
       .from('project_ideas')
       .update({ is_active: false })
       .eq('user_id', user.id)
-      .eq('is_active', true)
 
     const { error: insertError } = await supabase
       .from('project_ideas')
@@ -453,19 +451,55 @@ export async function saveTrialProject(
         title: ideaCard.title,
         description: ideaCard.description,
         idea_card: ideaCard,
-        setup_steps: setupSteps,
         is_active: true,
-        is_trial: true,
       })
-    if (insertError) return { error: 'お試しプロジェクトの作成に失敗しました。' }
+    if (insertError) return { error: 'プロジェクトの作成に失敗しました。' }
 
     await supabase
       .from('profiles')
       .update({ onboarding_completed: true, selected_idea: ideaCard })
       .eq('id', user.id)
 
+    // 生成したプロジェクトのIDを取得
+    const { data: newProject } = await supabase
+      .from('project_ideas')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('title', ideaCard.title)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (!newProject) return { success: true }
+
+    const questContext = {
+      who: ideaCard.questDescriptions?.[0] ?? '（未設定）',
+      what: ideaCard.description ?? '（未設定）',
+      how: ideaCard.description ?? '（未設定）',
+    }
+
+    // q1（setup）〜q5のステップをフル生成して保存
+    const [setupSteps, q2Steps, q3Steps, q4Steps, q5Steps] = await Promise.all([
+      generateSetupSteps(ideaCard.title, ideaCard.description, questContext),
+      generateQuestSteps(2, ideaCard.title, ideaCard.description, questContext),
+      generateQuestSteps(3, ideaCard.title, ideaCard.description, questContext),
+      generateQuestSteps(4, ideaCard.title, ideaCard.description, questContext),
+      generateQuestSteps(5, ideaCard.title, ideaCard.description, questContext),
+    ])
+
+    await supabase
+      .from('project_ideas')
+      .update({
+        setup_steps: setupSteps,
+        quest2_steps: q2Steps,
+        quest3_steps: q3Steps,
+        quest4_steps: q4Steps,
+        quest5_steps: q5Steps,
+      })
+      .eq('id', newProject.id)
+
     return { success: true }
   } catch {
-    return { error: 'お試しの開始に失敗しました。' }
+    return { error: 'プロジェクトの作成に失敗しました。' }
   }
 }

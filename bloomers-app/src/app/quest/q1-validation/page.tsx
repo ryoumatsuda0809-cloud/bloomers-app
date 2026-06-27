@@ -12,7 +12,6 @@ import {
   type ValidationState,
   type ValidationTurn,
 } from '@/app/actions/quest1-validation'
-import { updateQuestStatus } from '@/app/actions/quest'
 import type { IdeaCard, ValidatedBrief } from '@/app/actions/onboarding'
 import {
   AlertDialog,
@@ -84,26 +83,6 @@ function ReviewView({ brief, ideaCard, onBack }: {
   )
 }
 
-function TrialSkipView({ onSkip }: { onSkip: () => void }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 text-center space-y-4">
-        <span className="text-4xl">🌸</span>
-        <h2 className="text-lg font-bold text-foreground">体験版ではスキップできます</h2>
-        <p className="text-sm text-muted-foreground">
-          サンプルアイデアでは検証をスキップします。自分のアイデアで始めると、ここで本格的な検証インタビューが入ります。
-        </p>
-        <button
-          onClick={onSkip}
-          className="w-full h-10 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition"
-        >
-          クエスト1を完了して次へ
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function Q1ValidationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -111,7 +90,6 @@ function Q1ValidationContent() {
 
   const [projectId, setProjectId] = useState('')
   const [ideaCard, setIdeaCard] = useState<IdeaCard | null>(null)
-  const [isTrial, setIsTrial] = useState(false)
   const [isPageLoading, setIsPageLoading] = useState(true)
 
   const [state, setState] = useState<ValidationState>({
@@ -148,7 +126,7 @@ function Q1ValidationContent() {
 
       const { data: project } = await supabase
         .from('project_ideas')
-        .select('id, idea_card, is_trial')
+        .select('id, idea_card')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -161,14 +139,12 @@ function Q1ValidationContent() {
       }
 
       const card = project.idea_card as IdeaCard
-      const trial = (project as Record<string, unknown>).is_trial === true
 
       setProjectId(project.id)
       setIdeaCard(card)
-      setIsTrial(trial)
 
       // 過去の会話を復元
-      if (!isReviewMode && !trial) {
+      if (!isReviewMode) {
         const progress = card?.validationProgress
         if (progress) {
           // DB から会話履歴を復元
@@ -218,12 +194,6 @@ function Q1ValidationContent() {
 
     setMessages((prev) => [...prev, { role: 'assistant', content: summaryMessage }])
     setIsBriefing(false)
-  }
-
-  const handleTrialSkip = async () => {
-    if (!projectId) return
-    await updateQuestStatus('q1', 'completed', projectId)
-    router.push('/quest/q2')
   }
 
   const handleFinalize = async (): Promise<boolean> => {
@@ -315,10 +285,6 @@ function Q1ValidationContent() {
         </div>
       </div>
     )
-  }
-
-  if (isTrial) {
-    return <TrialSkipView onSkip={handleTrialSkip} />
   }
 
   if (isReviewMode && ideaCard?.validatedBrief) {

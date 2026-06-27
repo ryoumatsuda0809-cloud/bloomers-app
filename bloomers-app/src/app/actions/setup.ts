@@ -385,3 +385,54 @@ export async function saveStepAnswer(
     .update({ [columnName]: updated })
     .eq('id', projectId)
 }
+
+const QUEST_COLUMN: Record<2 | 3 | 4 | 5, string> = {
+  2: 'quest2_steps',
+  3: 'quest3_steps',
+  4: 'quest4_steps',
+  5: 'quest5_steps',
+}
+
+// ステップが空のクエストを開いた時に自動生成して返す（既存プロジェクトの救済 + 恒久対策）
+export async function ensureQuestSteps(
+  projectId: string,
+  questNumber: 2 | 3 | 4 | 5
+): Promise<SetupStep[]> {
+  const supabase = await createClient()
+  const columnName = QUEST_COLUMN[questNumber]
+
+  const { data: project } = await supabase
+    .from('project_ideas')
+    .select(`${columnName}, title, description, idea_card`)
+    .eq('id', projectId)
+    .single()
+
+  if (!project) return []
+
+  const p = project as unknown as Record<string, unknown>
+
+  const existing = p[columnName] as SetupStep[] | null
+  if (existing && existing.length > 0) return existing
+
+  const ideaCard = p.idea_card as { questDescriptions?: string[] } | null
+
+  const questContext = {
+    who: ideaCard?.questDescriptions?.[0] ?? '（未設定）',
+    what: p.description as string ?? '（未設定）',
+    how: p.description as string ?? '（未設定）',
+  }
+
+  const steps = await generateQuestSteps(
+    questNumber,
+    p.title as string,
+    p.description as string,
+    questContext
+  )
+
+  await supabase
+    .from('project_ideas')
+    .update({ [columnName]: steps })
+    .eq('id', projectId)
+
+  return steps
+}
